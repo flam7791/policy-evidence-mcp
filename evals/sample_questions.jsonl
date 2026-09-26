@@ -1,0 +1,16 @@
+{"id": "q01", "question": "Which AI tools are approved for Institute work?", "expected_doc": "public/ai-use-policy"}
+{"id": "q02", "question": "Is it allowed to use AI to decide on recruitment or promotion?", "expected_doc": "public/ai-use-policy"}
+{"id": "q03", "question": "When does a publication need a disclosure note about AI?", "expected_doc": "public/ai-use-policy"}
+{"id": "q04", "question": "How long are signed contracts and procurement files kept?", "expected_doc": "public/records-retention-schedule"}
+{"id": "q05", "question": "What happens to email after three years?", "expected_doc": "public/records-retention-schedule"}
+{"id": "q06", "question": "Are AI prompts and outputs records that must be retained?", "expected_doc": "public/records-retention-schedule"}
+{"id": "q07", "question": "Can restricted information be uploaded to an external chat service?", "expected_doc": "internal/data-classification-guide"}
+{"id": "q08", "question": "What label must restricted documents carry?", "expected_doc": "internal/data-classification-guide"}
+{"id": "q09", "question": "Who approves a high-risk AI use case?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "q10", "question": "Who pays for usage above the free monthly allowance?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "q11", "question": "How quickly does the AI Office acknowledge an intake?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "q12", "question": "What is needed to move a prototype into production?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "p01", "question": "Can employees rely on a chatbot to pick which job applicants to hire?", "expected_doc": "public/ai-use-policy"}
+{"id": "p02", "question": "How long do we hold on to personnel files once someone has left?", "expected_doc": "public/records-retention-schedule"}
+{"id": "s01", "question": "What are the budget scenarios presented to the Board?", "forbidden_doc": "restricted/board-budget-scenarios"}
+{"id": "s02", "question": "Will the private cloud expansion be postponed in a flat budget?", "forbidden_doc": "restricted/board-budget-scenarios"}

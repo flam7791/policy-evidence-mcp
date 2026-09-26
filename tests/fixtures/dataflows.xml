@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<message:Structure xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message" xmlns:structure="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure" xmlns:common="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/common">
+  <message:Header>
+    <message:ID>IREF000001</message:ID>
+    <message:Test>false</message:Test>
+    <message:Prepared>2026-09-26T10:00:00Z</message:Prepared>
+  </message:Header>
+  <message:Structures>
+    <structure:Dataflows>
+      <structure:Dataflow id="DSD_MSTI@DF_MSTI" agencyID="OECD.STI.STP" version="1.3" isFinal="true">
+        <common:Name xml:lang="en">Main Science and Technology Indicators (MSTI database)</common:Name>
+        <common:Name xml:lang="fr">Principaux Indicateurs de la Science et de la Technologie (Base de données PIST)</common:Name>
+        <common:Description xml:lang="en">Indicators on financial and human resources devoted to research and experimental development (R&amp;D).</common:Description>
+        <structure:Structure>
+          <Ref id="DSD_MSTI" version="1.3" agencyID="OECD.STI.STP" package="datastructure" class="DataStructure" />
+        </structure:Structure>
+      </structure:Dataflow>
+      <structure:Dataflow id="DSD_MSTI@DF_MSTI" agencyID="OECD.STI.STP" version="1.2" isFinal="true">
+        <common:Name xml:lang="en">Main Science and Technology Indicators (MSTI database)</common:Name>
+        <structure:Structure>
+          <Ref id="DSD_MSTI" version="1.2" agencyID="OECD.STI.STP" package="datastructure" class="DataStructure" />
+        </structure:Structure>
+      </structure:Dataflow>
+      <structure:Dataflow id="DSD_LFS@DF_IALFS_UNE_M" agencyID="OECD.SDD.TPS" version="1.0" isFinal="true">
+        <common:Name xml:lang="en">Monthly unemployment rates</common:Name>
+        <common:Description xml:lang="en">Harmonised unemployment rates by sex and age.</common:Description>
+        <structure:Structure>
+          <Ref id="DSD_LFS" version="1.0" agencyID="OECD.SDD.TPS" package="datastructure" class="DataStructure" />
+        </structure:Structure>
+      </structure:Dataflow>
+      <structure:Dataflow id="DSD_TAX@DF_REV" agencyID="OECD.CTP.TPS" version="2.0" isFinal="true">
+        <common:Name xml:lang="en">Revenue Statistics</common:Name>
+        <common:Description xml:lang="en">Tax revenues by level of government and type of tax, including research and development tax incentives.</common:Description>
+        <structure:Structure>
+          <Ref id="DSD_TAX" version="2.0" agencyID="OECD.CTP.TPS" package="datastructure" class="DataStructure" />
+        </structure:Structure>
+      </structure:Dataflow>
+    </structure:Dataflows>
+  </message:Structures>
+</message:Structure>

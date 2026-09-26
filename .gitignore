@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Local data: never commit your own corpus or the index built from it
+index/
+corpus/
+*.index.json
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
