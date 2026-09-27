@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "policy-evidence-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server giving AI assistants governed, cited access to official statistics (SDMX) and policy documents (RAG)."
 readme = "README.md"
 license = "MIT"

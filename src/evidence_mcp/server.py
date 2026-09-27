@@ -30,7 +30,7 @@ from mcp_types import ToolAnnotations
 from . import __version__
 from .config import Settings, classification_allowed
 from .http_cache import HttpFetcher, UpstreamError
-from .retrieval import Bm25Index, load_index
+from .retrieval import Bm25Index, HybridIndex, load_index, searcher
 from .sdmx import SdmxClient
 from .validation import (
     InvalidArgument,
@@ -76,16 +76,20 @@ def _fold(text: str) -> str:
 
 
 class DocumentStore:
-    """Loads the index lazily and reloads it when the file changes (e.g. after re-ingesting)."""
+    """Loads the index lazily and reloads it when the file changes (e.g. after re-ingesting).
 
-    def __init__(self, index_path: Path):
+    With an embedder and an index that has vectors, search is hybrid; otherwise keywords.
+    """
+
+    def __init__(self, index_path: Path, embedder=None):
         self.index_path = index_path
+        self.embedder = embedder
         self._lock = threading.Lock()
         self._mtime: float | None = None
         self._meta: dict = {}
-        self._bm25: Bm25Index | None = None
+        self._bm25: Bm25Index | HybridIndex | None = None
 
-    def get(self) -> tuple[dict, Bm25Index]:
+    def get(self) -> tuple[dict, Bm25Index | HybridIndex]:
         with self._lock:
             try:
                 mtime = self.index_path.stat().st_mtime
@@ -96,17 +100,18 @@ class DocumentStore:
                 ) from None
             if self._bm25 is None or mtime != self._mtime:
                 log.info("loading index %s", self.index_path)
-                self._meta, self._bm25 = load_index(self.index_path)
+                self._meta, keyword_index = load_index(self.index_path)
+                self._bm25 = searcher(self._meta, keyword_index, self.embedder)
                 self._mtime = mtime
             return self._meta, self._bm25
 
 
 def create_server(
-    settings: Settings | None = None, fetcher: HttpFetcher | None = None
+    settings: Settings | None = None, fetcher: HttpFetcher | None = None, embedder=None
 ) -> MCPServer:
     settings = settings or Settings.from_env()
     sdmx = SdmxClient(fetcher or HttpFetcher(settings))
-    store = DocumentStore(settings.index_path)
+    store = DocumentStore(settings.index_path, embedder or settings.embedder())
     ceiling = settings.max_classification
 
     server = MCPServer(
@@ -285,6 +290,7 @@ def create_server(
         hits = index.search(query, top_k, ceiling)
         return {
             "query": query,
+            "search_mode": getattr(index, "last_mode", "keywords"),
             "results": [
                 {
                     "rank": rank,
@@ -295,6 +301,7 @@ def create_server(
                     "page": hit.chunk.page,
                     "source": hit.chunk.source,
                     "classification": hit.chunk.classification,
+                    "matched_by": hit.matched_by,
                     "text": hit.chunk.text,
                 }
                 for rank, hit in enumerate(hits, start=1)
@@ -308,11 +315,17 @@ def create_server(
     @server.tool(annotations=LOCAL_READ)
     def list_documents() -> dict:
         """List the documents in the collection that this server is cleared to show."""
-        meta, _ = store.get()
+        meta, index = store.get()
         visible = [
             d for d in meta["documents"] if classification_allowed(d["classification"], ceiling)
         ]
-        return {"built_at": meta.get("built_at"), "clearance": ceiling, "documents": visible}
+        return {
+            "built_at": meta.get("built_at"),
+            "clearance": ceiling,
+            "search": "hybrid" if isinstance(index, HybridIndex) else "keywords",
+            "embedding_model": meta.get("embedding_model"),
+            "documents": visible,
+        }
 
     # ------------------------------------------------------------------ prompt
 

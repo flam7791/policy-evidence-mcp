@@ -35,6 +35,18 @@ jobs:
         run: |
           evidence-mcp ingest --corpus sample_corpus --out build/index.json
           evidence-mcp eval --questions evals/sample_questions.jsonl --index build/index.json --min-hit 0.8
+      - name: Hybrid search evaluation (replays recorded vectors, no model needed)
+        if: hashFiles('evals/embeddings.json') != ''
+        env:
+          EVIDENCE_MCP_MAX_CLASSIFICATION: internal
+        run: |
+          CACHE="--embeddings-cache evals/embeddings.json --offline"
+          evidence-mcp ingest --corpus sample_corpus --out build/hybrid.json --embeddings $CACHE
+          evidence-mcp eval --questions evals/sample_questions.jsonl --index build/hybrid.json \
+            --mode hybrid --min-hit 0.8 $CACHE
+          # Paraphrases: report both modes; only a leak fails the build here.
+          evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
+            --mode compare --min-hit 0 $CACHE
 
   docker:
     runs-on: ubuntu-latest

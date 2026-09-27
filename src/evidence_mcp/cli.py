@@ -37,7 +37,24 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def _embedder(args: argparse.Namespace, settings: Settings):
+    """The embedder for --embeddings: live, recorded to a cache file, or replayed offline."""
+    from .embeddings import EmbeddingCache
+
+    live = settings.embedder()
+    cache = getattr(args, "embeddings_cache", None)
+    if cache:
+        return EmbeddingCache(Path(cache), live, offline=args.offline)
+    if live is None or args.offline:
+        raise SystemExit(
+            "Semantic search needs EVIDENCE_MCP_EMBEDDINGS_URL (e.g. http://localhost:11434/v1), "
+            "or --embeddings-cache FILE with recorded vectors."
+        )
+    return live
+
+
 def _ingest(args: argparse.Namespace, settings: Settings) -> int:
+    from .embeddings import EmbeddingError
     from .retrieval import build_index, save_index
 
     ceiling = args.ceiling or settings.max_classification
@@ -45,42 +62,78 @@ def _ingest(args: argparse.Namespace, settings: Settings) -> int:
     if not corpus.is_dir():
         print(f"Corpus folder not found: {corpus}", file=sys.stderr)
         return 2
-    index = build_index(corpus, ceiling, max_chars=args.max_chars)
+    embedder = _embedder(args, settings) if args.embeddings else None
+    try:
+        index = build_index(corpus, ceiling, max_chars=args.max_chars, embedder=embedder)
+    except EmbeddingError as exc:
+        print(f"Embedding failed: {exc}", file=sys.stderr)
+        return 3
     out = Path(args.out) if args.out else settings.index_path
     save_index(index, out)
+    vectors = f", vectors from {index['embedding_model']}" if index.get("vectors") else ""
     print(
-        f"Indexed {len(index['documents'])} documents ({len(index['chunks'])} chunks) at ceiling "
-        f"'{ceiling}'; skipped {index['excluded_documents']} above it. Wrote {out}",
+        f"Indexed {len(index['documents'])} documents ({len(index['chunks'])} chunks{vectors}) "
+        f"at ceiling '{ceiling}'; skipped {index['excluded_documents']} above it. Wrote {out}",
         file=sys.stderr,
     )
     return 0
 
 
 def _search(args: argparse.Namespace, settings: Settings) -> int:
-    from .retrieval import load_index
+    from .retrieval import load_index, searcher
 
-    _, index = load_index(Path(args.index) if args.index else settings.index_path)
-    for rank, hit in enumerate(
-        index.search(args.query, args.top_k, settings.max_classification), 1
-    ):
-        print(f"{rank}. [{hit.score:.2f}] {hit.chunk.citation()}\n   {hit.chunk.text[:200]}...\n")
+    meta, keyword_index = load_index(Path(args.index) if args.index else settings.index_path)
+    index = searcher(meta, keyword_index, settings.embedder())
+    hits = index.search(args.query, args.top_k, settings.max_classification)
+    print(f"Search mode: {getattr(index, 'last_mode', 'keywords')}\n")
+    for rank, hit in enumerate(hits, 1):
+        print(
+            f"{rank}. [{hit.score:.2f}, {hit.matched_by}] {hit.chunk.citation()}\n"
+            f"   {hit.chunk.text[:200]}...\n"
+        )
     return 0
 
 
 def _eval(args: argparse.Namespace, settings: Settings) -> int:
     from .evaluation import evaluate, load_questions
-    from .retrieval import load_index
+    from .retrieval import load_index, searcher
 
-    _, index = load_index(Path(args.index) if args.index else settings.index_path)
-    report = evaluate(
-        index, load_questions(Path(args.questions)), settings.max_classification, args.k
-    )
-    print(report.summary())
-    for miss in report.misses:
-        print(f"  miss: {miss}")
-    ok = report.passed(args.min_hit)
+    meta, keyword_index = load_index(Path(args.index) if args.index else settings.index_path)
+    questions = load_questions(Path(args.questions))
+    modes = ["keywords", "hybrid"] if args.mode == "compare" else [args.mode]
+    if "hybrid" in modes and not meta.get("vectors"):
+        raise SystemExit("This index has no vectors: run `evidence-mcp ingest --embeddings`.")
+
+    ok = True
+    print(f"| Mode | hit@1 | hit@{args.k} | MRR | Leaks |\n|---|---|---|---|---|")
+    reports = {}
+    for mode in modes:
+        index = (
+            searcher(meta, keyword_index, _embedder(args, settings))
+            if mode == "hybrid"
+            else keyword_index
+        )
+        report = evaluate(index, questions, settings.max_classification, args.k)
+        if getattr(index, "fallbacks", 0):
+            raise SystemExit(f"Hybrid search fell back to keywords: {index.last_mode}")
+        reports[mode] = report
+        print(
+            f"| {mode} | {report.hit_at_1:.2f} | {report.hit_at_k:.2f} | {report.mrr:.2f} | "
+            f"{report.leaks} |"
+        )
+        ok = ok and report.passed(args.min_hit)
+    for mode, report in reports.items():
+        for miss in report.misses:
+            print(f"  {mode} miss: {miss}")
     print("PASS" if ok else f"FAIL (need hit@{args.k} >= {args.min_hit} and zero leaks)")
     return 0 if ok else 1
+
+
+def embedding_options(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--embeddings-cache", help="record vectors to / replay them from this JSON file")
+    p.add_argument(
+        "--offline", action="store_true", help="replay recorded vectors only; never call a model"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -104,6 +157,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", help="index path (default: EVIDENCE_MCP_INDEX_PATH)")
     p.add_argument("--ceiling", choices=CLASSIFICATION_LEVELS, help="highest level to index")
     p.add_argument("--max-chars", type=int, default=1200, help="maximum characters per chunk")
+    p.add_argument(
+        "--embeddings", action="store_true", help="also store vectors, for hybrid search"
+    )
+    embedding_options(p)
 
     p = sub.add_parser("search", help="search the document index from the terminal")
     p.add_argument("query")
@@ -115,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--k", type=int, default=3)
     p.add_argument("--min-hit", type=float, default=0.8, help="minimum hit@k to pass")
     p.add_argument("--index")
+    p.add_argument("--mode", choices=["keywords", "hybrid", "compare"], default="keywords")
+    embedding_options(p)
 
     args = parser.parse_args(argv)
     logging.basicConfig(

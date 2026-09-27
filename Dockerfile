@@ -15,13 +15,15 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 RUN pip install --no-cache-dir .
 
-# Build the index at image build time from the (fictional) sample corpus.
-# Mount your own index at /app/index to serve real documents.
+# Build a keyword index at image build time from the (fictional) sample corpus. Mount your own
+# index at /app/index to serve real documents. For hybrid search, set EVIDENCE_MCP_EMBEDDINGS_URL
+# and re-run `evidence-mcp ingest --corpus sample_corpus --embeddings` when the container starts
+# (the platform's compose file does this), so vectors come from your embedding service.
 COPY sample_corpus ./sample_corpus
 RUN evidence-mcp ingest --corpus sample_corpus
 
-# Run as an unprivileged user.
-RUN useradd --create-home appuser
+# Run as an unprivileged user, who may rebuild the index.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app/index
 USER appuser
 
 EXPOSE 8000

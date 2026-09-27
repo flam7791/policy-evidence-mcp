@@ -25,6 +25,11 @@ class Settings:
     # The OECD API allows about 60 requests per hour per client; stay below it.
     rate_limit_per_hour: int = 50
     http_timeout_seconds: float = 30.0
+    # Semantic search (optional): an OpenAI-compatible /embeddings endpoint, e.g. Ollama at
+    # http://localhost:11434/v1, an LLM gateway, or Azure OpenAI. Unset = keywords only.
+    embeddings_url: str | None = None
+    embeddings_model: str = "nomic-embed-text"
+    embeddings_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -43,9 +48,22 @@ class Settings:
             http_timeout_seconds=float(
                 env.get("EVIDENCE_MCP_HTTP_TIMEOUT", defaults.http_timeout_seconds)
             ),
+            embeddings_url=env.get("EVIDENCE_MCP_EMBEDDINGS_URL") or None,
+            embeddings_model=env.get("EVIDENCE_MCP_EMBEDDINGS_MODEL", defaults.embeddings_model),
+            embeddings_api_key=env.get("EVIDENCE_MCP_EMBEDDINGS_API_KEY") or None,
         )
         settings.validate()
         return settings
+
+    def embedder(self):
+        """The configured embedding client, or None for keyword-only search."""
+        if not self.embeddings_url:
+            return None
+        from .embeddings import OpenAIEmbeddings
+
+        return OpenAIEmbeddings(
+            self.embeddings_url, self.embeddings_model, api_key=self.embeddings_api_key
+        )
 
     def validate(self) -> None:
         if self.max_classification not in CLASSIFICATION_LEVELS:

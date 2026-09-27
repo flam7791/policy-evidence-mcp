@@ -73,3 +73,15 @@ in-process client; one end-to-end test that starts the real server over stdio; a
 `scripts/smoke_live.py` for the live service.
 **Consequences.** The suite runs in about two seconds, anywhere. The fixtures can drift from the
 live format, which is what the smoke script is for.
+
+## 9. Hybrid search by rank fusion, one model per index
+
+**Context.** Keyword search misses questions worded unlike the documents: on the paraphrase set,
+it finds the right document in the top 3 only about half the time.
+**Decision.** Add embeddings from any OpenAI-compatible endpoint and merge the keyword and
+similarity rankings by reciprocal rank fusion, which needs no calibration between the two score
+scales. The index records the embedding model; a query answered by another model, or no model,
+falls back to keywords and says so.
+**Consequences.** Better recall on paraphrases where the evaluation shows it, with no new
+failure mode: an embedding outage degrades search instead of breaking it. Changing the
+embedding model means re-indexing, deliberately.

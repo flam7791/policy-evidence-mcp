@@ -6,11 +6,12 @@ to two kinds of evidence**:
 1. **Official statistics**, live from any SDMX 2.1 API (the OECD's public API by default):
    find a dataset, understand its dimensions, fetch observations with a citable source URL.
 2. **Policy documents**, through a local retrieval (RAG) index with a **sensitivity ceiling**:
-   documents above the configured classification are never indexed or returned.
+   documents above the configured classification are never indexed or returned. Search is by
+   keywords (BM25), or **hybrid** (keywords plus meaning, from any embedding service).
 
 The server does retrieval and citation. The client model (Claude, Copilot, ChatGPT or any
-MCP-capable assistant) does the reasoning and writing. No model runs inside the server, so it has
-no API keys and no token cost of its own.
+MCP-capable assistant) does the reasoning and writing. No language model runs inside the server;
+hybrid search only calls an embedding model, which can be local.
 
 > **Unofficial project.** Not affiliated with or endorsed by the OECD or any other data provider.
 > Data retrieved through an API remains subject to that provider's terms of use. The sample
@@ -24,11 +25,12 @@ flowchart LR
     subgraph S [policy-evidence-mcp]
       V["Input validation"] --> T["Tools"]
       T --> H["HTTP layer<br/>host allowlist, cache,<br/>rate limit, size cap"]
-      T --> R["BM25 retriever<br/>sensitivity ceiling"]
+      T --> R["Retriever: BM25, or hybrid<br/>with embeddings (rank fusion)<br/>sensitivity ceiling"]
     end
     H -- "HTTPS, read-only" --> API[("SDMX API<br/>e.g. OECD")]
     R --> I[("index.json<br/>chunks + citations")]
     C[("Corpus folder<br/>public / internal / restricted")] -- "evidence-mcp ingest<br/>(ceiling applied)" --> I
+    R -. "query vectors (optional)" .-> E[("Embedding service<br/>Ollama, LLM gateway,<br/>Azure OpenAI")]
 ```
 
 ## Tools
@@ -59,7 +61,7 @@ python -m venv .venv
 # Windows (PowerShell): .venv\Scripts\Activate.ps1      macOS/Linux: source .venv/bin/activate
 pip install -e ".[dev]"
 
-pytest                                                   # 81 offline tests, about 2 seconds
+pytest                                                   # 93 offline tests, about 2 seconds
 
 # The default ceiling is "public"; allow the sample's internal documents too.
 export EVIDENCE_MCP_MAX_CLASSIFICATION=internal   # PowerShell: $env:EVIDENCE_MCP_MAX_CLASSIFICATION="internal"
@@ -113,6 +115,9 @@ All settings are environment variables with safe defaults.
 | `EVIDENCE_MCP_CACHE_DIR` | `~/.cache/evidence-mcp` | HTTP cache and rate-limit state |
 | `EVIDENCE_MCP_RATE_LIMIT_PER_HOUR` | `50` | Upstream requests per hour (the OECD allows about 60) |
 | `EVIDENCE_MCP_HTTP_TIMEOUT` | `30` | Seconds per upstream request |
+| `EVIDENCE_MCP_EMBEDDINGS_URL` | none | OpenAI-compatible embeddings endpoint; unset = keywords only |
+| `EVIDENCE_MCP_EMBEDDINGS_MODEL` | `nomic-embed-text` | Embedding model (`auto` through a gateway) |
+| `EVIDENCE_MCP_EMBEDDINGS_API_KEY` | none | Key for that endpoint, if it needs one |
 
 ## Security model
 
@@ -164,13 +169,53 @@ Current baseline (ceiling `internal`, k = 3):
 The one miss is instructive. *"Can employees rely on a chatbot to pick which job applicants to
 hire?"* shares no words with the policy, which says *"Staff must not use AI tools to make
 decisions about individuals, such as recruitment"*. Keyword retrieval cannot bridge that
-vocabulary gap; embedding-based retrieval can. That is the first item on the roadmap, and the
-evaluation set is what will show whether it helps.
+vocabulary gap.
+
+`evals/paraphrase_questions.jsonl` makes the gap measurable: 13 questions worded the way people
+ask rather than the way policies are written, plus a security question. Keyword search finds the
+right document in the top 3 for **0.54** of them (hit@1 0.46, MRR 0.52, no leaks).
+
+## Hybrid search (0.2)
+
+Hybrid search adds meaning to keywords. At ingest, every chunk also gets an embedding vector; at
+query time, the keyword ranking and the similarity ranking are merged by **reciprocal rank
+fusion** (each chunk scores the sum of 1 / (60 + rank) over both lists). Any OpenAI-compatible
+embeddings endpoint works: a **local model through Ollama** (nothing leaves the machine), an
+internal **LLM gateway** (which applies the data policy and records the cost) or **Azure
+OpenAI**.
+
+```bash
+ollama pull nomic-embed-text
+export EVIDENCE_MCP_EMBEDDINGS_URL=http://localhost:11434/v1
+export EVIDENCE_MCP_MAX_CLASSIFICATION=internal
+evidence-mcp ingest --corpus sample_corpus --embeddings --embeddings-cache evals/embeddings.json
+evidence-mcp eval --questions evals/paraphrase_questions.jsonl --mode compare \
+  --embeddings-cache evals/embeddings.json
+```
+
+The comparison prints hit@1, hit@3, MRR and leaks for both modes. The cache file records every
+vector, so the same comparison replays offline (`--offline`) in CI once it is committed.
+
+Rules that keep it safe:
+
+- **Documents above the ceiling are never sent for embedding**, and the ceiling filters the
+  meaning side of search exactly like the keyword side.
+- **One model per index.** The index records the model that made its vectors. If the service
+  answers with another model, or is down, search uses keywords only and says so in its result
+  (`search_mode`), rather than mixing incomparable vectors or failing.
+- Each result says whether it was found by keywords, by meaning, or both (`matched_by`).
+
+In [governed-ai-platform](https://github.com/flam7791/governed-ai-platform), the server runs as
+an internal container, re-indexes at start with a local embedding model through the LLM gateway
+(whose `local_only` policy guarantees document text never leaves), and serves the agents over
+MCP.
 
 ## Limitations and roadmap
 
-- [ ] **Hybrid retrieval**: add embeddings (local or hosted) alongside BM25, then a reranker;
-      keep the evaluation gate and compare.
+- [x] **Hybrid retrieval**: embeddings alongside BM25 with rank fusion, compared on the same
+      evaluation (0.2)
+- [ ] **Reranking**: a cross-encoder or model-based reranker over the fused top 20, if the
+      evaluation shows it pays for its latency.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.
@@ -188,7 +233,8 @@ src/evidence_mcp/
   sdmx.py         SDMX client and parsers (catalogue, structure, CSV data)
   http_cache.py   host allowlist, disk cache, rate limit, retries, size cap
   documents.py    loading (md/txt/pdf), metadata, heading-aware chunking
-  retrieval.py    BM25 index, sensitivity ceiling, index files
+  retrieval.py    BM25 and hybrid search, sensitivity ceiling, index files
+  embeddings.py   OpenAI-compatible embeddings client, recorded vectors for replay
   evaluation.py   hit@k, MRR, leak detection
   validation.py   input patterns
   config.py       settings and classification levels

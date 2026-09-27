@@ -18,8 +18,6 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .retrieval import Bm25Index
-
 
 @dataclass
 class EvalReport:
@@ -46,7 +44,8 @@ def load_questions(path: Path) -> list[dict]:
     return [json.loads(line) for line in lines if line.strip() and not line.startswith("//")]
 
 
-def evaluate(index: Bm25Index, questions: list[dict], ceiling: str, k: int = 3) -> EvalReport:
+def evaluate(index, questions: list[dict], ceiling: str, k: int = 3) -> EvalReport:
+    """Evaluate any searcher with a search(query, top_k, ceiling) method (keywords or hybrid)."""
     report = EvalReport(k=k)
     reciprocal_ranks, hits1, hitsk = [], 0, 0
     depth = max(k, 10)  # look deeper than k so MRR can credit ranks 4..10
