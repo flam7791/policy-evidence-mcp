@@ -153,6 +153,21 @@ treated as untrusted.
   documents up to the lower of the server's ceiling and their own clearance. See
   [Access management](#access-management-03).
 
+## SharePoint through Microsoft Graph (0.3)
+
+`evidence-mcp sync-sharepoint` copies a SharePoint library into a corpus through Microsoft Graph,
+with app-only access to that one site (`Sites.Selected`), and classifies each file by its
+**Purview sensitivity label**. Unlabelled files, and labels not in the mapping, are treated as
+`restricted`, so a labelling gap can only narrow access. Re-syncs download only changed files,
+move re-labelled files and remove deleted ones; answers cite the SharePoint link. Word documents
+(`.docx`) are now indexed too. Setup and permissions: [docs/sharepoint.md](docs/sharepoint.md);
+example configuration: [sharepoint.example.toml](sharepoint.example.toml).
+
+```bash
+evidence-mcp sync-sharepoint --config sharepoint.toml --out corpus-sharepoint
+evidence-mcp ingest --corpus corpus-sharepoint --ceiling internal
+```
+
 ## Access management (0.3)
 
 Over HTTP, every request needs a bearer token, and each caller sees documents up to **the lower

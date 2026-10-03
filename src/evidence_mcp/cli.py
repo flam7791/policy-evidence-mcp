@@ -83,6 +83,30 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def _sync_sharepoint(args: argparse.Namespace, settings: Settings) -> int:
+    from .sharepoint import GraphClient, SharePointConfig, SyncError, sync
+
+    try:
+        config = SharePointConfig.load(Path(args.config))
+        report = sync(config, Path(args.out), GraphClient(config))
+    except SyncError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(
+        f"downloaded {report.downloaded}, unchanged {report.unchanged}, "
+        f"by classification {report.by_classification}"
+    )
+    if report.unlabelled:
+        print(
+            f"{len(report.unlabelled)} file(s) without a mapped label, treated as "
+            f"{config.unlabelled}: " + ", ".join(report.unlabelled[:10])
+        )
+    if report.skipped:
+        print(f"skipped {len(report.skipped)}: " + ", ".join(report.skipped[:10]))
+    print(f"next: evidence-mcp ingest --corpus {args.out}")
+    return 0
+
+
 def _token(args: argparse.Namespace, settings: Settings) -> int:
     from .auth import AuthConfigError, create_token, load_token_file, revoke_token
 
@@ -232,6 +256,12 @@ def main(argv: list[str] | None = None) -> int:
         help="serve without auth on a non-loopback address (private networks only)",
     )
 
+    p = sub.add_parser(
+        "sync-sharepoint", help="copy a SharePoint library into a corpus folder (Graph)"
+    )
+    p.add_argument("--config", required=True, help="sharepoint.toml")
+    p.add_argument("--out", required=True, help="corpus folder to write")
+
     p = sub.add_parser("token", help="manage bearer tokens for --auth tokens")
     p.add_argument("action", choices=["create", "revoke", "list"])
     p.add_argument("--name")
@@ -279,6 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         "search": _search,
         "eval": _eval,
         "token": _token,
+        "sync-sharepoint": _sync_sharepoint,
     }
     return handlers[args.command](args, settings)
 

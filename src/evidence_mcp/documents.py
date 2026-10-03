@@ -1,12 +1,16 @@
 """Load documents from a corpus folder and split them into citable chunks.
 
-Supported formats: Markdown (.md), plain text (.txt) and PDF (.pdf).
+Supported formats: Markdown (.md), plain text (.txt), PDF (.pdf) and Word (.docx).
 
 Metadata per document:
 - title           from front matter, else the first "# " heading, else the file name
 - source          from front matter (a URL or reference), else the relative file path
 - classification  from front matter, else the name of the folder it sits in when that name
                   is a sensitivity level (corpus/internal/x.pdf -> "internal"), else "public"
+
+A sidecar file `<name>.meta.json` next to a document, when present, provides the same three
+fields for formats that cannot carry front matter (PDF, Word); the SharePoint sync writes one
+for every file, with the document's web URL as source and the classification from its label.
 
 Markdown front matter is a simple block of "key: value" lines between two "---" lines at the
 top of the file. Chunks never cross a section heading, so every chunk can be cited as
@@ -15,14 +19,17 @@ top of the file. Chunks never cross a section heading, so every chunk can be cit
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
+import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from xml.etree import ElementTree
 
 from .config import CLASSIFICATION_LEVELS
 
-SUPPORTED_SUFFIXES = {".md", ".txt", ".pdf"}
+SUPPORTED_SUFFIXES = {".md", ".txt", ".pdf", ".docx"}
 DEFAULT_MAX_CHARS = 1200
 
 
@@ -133,14 +140,51 @@ def _pdf_blocks(path: Path) -> tuple[str | None, list[tuple[int | None, str | No
     return title, blocks
 
 
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def _docx_blocks(path: Path) -> tuple[str | None, list[tuple[int | None, str | None, str]]]:
+    """Paragraphs of a Word document, with Heading styles as sections (standard library only)."""
+    with zipfile.ZipFile(path) as archive:
+        root = ElementTree.fromstring(archive.read("word/document.xml"))
+    title, section = None, None
+    blocks: list[tuple[int | None, str | None, str]] = []
+    for para in root.iter(f"{W}p"):
+        text = "".join(t.text or "" for t in para.iter(f"{W}t")).strip()
+        if not text:
+            continue
+        style = para.find(f"{W}pPr/{W}pStyle")
+        name = (style.get(f"{W}val") if style is not None else "") or ""
+        if name.lower() == "title" or (name.lower() == "heading1" and title is None):
+            title = title or text
+            if name.lower() == "heading1":
+                section = text
+        elif name.lower().startswith("heading"):
+            section = text
+        else:
+            blocks.append((None, section, text))
+    return title, blocks
+
+
+def _sidecar(path: Path) -> dict[str, str]:
+    side = path.with_name(path.name + ".meta.json")
+    if not side.exists():
+        return {}
+    data = json.loads(side.read_text(encoding="utf-8"))
+    return {k: str(v) for k, v in data.items() if k in {"title", "source", "classification"}}
+
+
 def load_document(path: Path, corpus_root: Path) -> Document:
     relative = path.relative_to(corpus_root)
     meta: dict[str, str] = {}
     if path.suffix.lower() == ".pdf":
         title, blocks = _pdf_blocks(path)
+    elif path.suffix.lower() == ".docx":
+        title, blocks = _docx_blocks(path)
     else:
         meta, body = _split_front_matter(path.read_text(encoding="utf-8", errors="replace"))
         title, blocks = _markdown_blocks(body)
+    meta = {**meta, **_sidecar(path)}
 
     classification = meta.get("classification", _folder_classification(relative)).lower()
     return Document(
