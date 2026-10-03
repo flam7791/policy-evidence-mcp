@@ -28,6 +28,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import ToolAnnotations
 
 from . import __version__
+from .auth import caller, effective_ceiling
 from .config import Settings, classification_allowed
 from .http_cache import HttpFetcher, UpstreamError
 from .retrieval import Bm25Index, HybridIndex, load_index, searcher
@@ -107,18 +108,26 @@ class DocumentStore:
 
 
 def create_server(
-    settings: Settings | None = None, fetcher: HttpFetcher | None = None, embedder=None
+    settings: Settings | None = None,
+    fetcher: HttpFetcher | None = None,
+    embedder=None,
+    token_verifier=None,
+    auth=None,
 ) -> MCPServer:
+    """Build the server. With `token_verifier` and `auth` (mcp AuthSettings), the HTTP transport
+    requires a bearer token and each caller sees documents up to their own clearance."""
     settings = settings or Settings.from_env()
     sdmx = SdmxClient(fetcher or HttpFetcher(settings))
     store = DocumentStore(settings.index_path, embedder or settings.embedder())
-    ceiling = settings.max_classification
+    server_ceiling = settings.max_classification
 
     server = MCPServer(
         name="policy-evidence",
         title="Policy evidence: statistics and documents",
         instructions=INSTRUCTIONS,
         version=__version__,
+        token_verifier=token_verifier,
+        auth=auth,
     )
 
     # ------------------------------------------------------------------ statistics tools
@@ -287,7 +296,9 @@ def create_server(
             query = check_query(query)
             top_k = check_range(top_k, "top_k", 1, 10)
         _, index = store.get()
+        ceiling = effective_ceiling(server_ceiling)
         hits = index.search(query, top_k, ceiling)
+        log.info("search_documents caller=%s ceiling=%s hits=%d", caller(), ceiling, len(hits))
         return {
             "query": query,
             "search_mode": getattr(index, "last_mode", "keywords"),
@@ -316,6 +327,7 @@ def create_server(
     def list_documents() -> dict:
         """List the documents in the collection that this server is cleared to show."""
         meta, index = store.get()
+        ceiling = effective_ceiling(server_ceiling)
         visible = [
             d for d in meta["documents"] if classification_allowed(d["classification"], ceiling)
         ]

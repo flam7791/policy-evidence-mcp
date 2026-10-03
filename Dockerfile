@@ -1,7 +1,9 @@
 # Runs the server over Streamable HTTP, for use by MCP clients that connect by URL.
 # Build:  docker build -t policy-evidence-mcp .
-# Run:    docker run --rm -p 127.0.0.1:8000:8000 policy-evidence-mcp
-# The server has no authentication, so publish the port on 127.0.0.1 only.
+# Tokens: evidence-mcp token create --name alice --clearance internal --tokens-file tokens.json
+# Run:    docker run --rm -p 8000:8000 -v "$PWD/tokens.json:/app/secrets/tokens.json:ro" \
+#             policy-evidence-mcp
+# Every request needs a bearer token; for Entra ID, override the command with --auth entra.
 
 FROM python:3.12-slim
 
@@ -27,4 +29,5 @@ RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app/index
 USER appuser
 
 EXPOSE 8000
-CMD ["evidence-mcp", "serve", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["evidence-mcp", "serve", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8000", \
+     "--auth", "tokens", "--tokens-file", "/app/secrets/tokens.json"]

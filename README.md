@@ -120,6 +120,10 @@ All settings are environment variables with safe defaults.
 | `EVIDENCE_MCP_EMBEDDINGS_URL` | none | OpenAI-compatible embeddings endpoint; unset = keywords only |
 | `EVIDENCE_MCP_EMBEDDINGS_MODEL` | `nomic-embed-text` | Embedding model (`auto` through a gateway) |
 | `EVIDENCE_MCP_EMBEDDINGS_API_KEY` | none | Key for that endpoint, if it needs one |
+| `EVIDENCE_MCP_TOKENS_FILE` | `tokens.json` | Hashed tokens for `--auth tokens` |
+| `EVIDENCE_MCP_ENTRA_TENANT_ID` / `_AUDIENCE` | none | Entra ID tenant and the API's Application ID URI, for `--auth entra` |
+| `EVIDENCE_MCP_ENTRA_SCOPE` | `Evidence.Read` | Delegated scope a token must carry |
+| `EVIDENCE_MCP_ENTRA_ROLES` | `Evidence.Public=public,...` | App role to clearance mapping |
 
 ## Security model
 
@@ -142,10 +146,50 @@ treated as untrusted.
   quota.
 - **Transport.** stdio for local use (logs go to stderr so they never corrupt the protocol
   stream). The HTTP transport binds to 127.0.0.1 by default and rejects requests whose `Host`
-  header is not allowed (DNS-rebinding protection). It has **no authentication**: put it behind
-  an authenticating gateway before exposing it beyond one machine.
-- **Single clearance per server.** Every user of one server instance sees the same ceiling.
-  Per-user permission trimming would need the user's identity from the client (see roadmap).
+  header is not allowed (DNS-rebinding protection).
+- **Authenticated callers, each with their own clearance (0.3).** Over HTTP the server requires
+  a bearer token (its own hashed tokens, or Entra ID access tokens) and refuses to start on a
+  network address without one unless told the network itself is the boundary. Each caller sees
+  documents up to the lower of the server's ceiling and their own clearance. See
+  [Access management](#access-management-03).
+
+## Access management (0.3)
+
+Over HTTP, every request needs a bearer token, and each caller sees documents up to **the lower
+of the server's ceiling and their own clearance**. Statistics are public and need only a valid
+token. The server publishes OAuth protected-resource metadata, so MCP clients that support OAuth
+discover where to get a token; requests without one get `401` with a pointer to it.
+
+**Tokens issued by the server** (a team server or a pilot):
+
+```bash
+evidence-mcp token create --name alice --clearance public     --tokens-file tokens.json
+evidence-mcp token create --name bob   --clearance internal   --tokens-file tokens.json
+evidence-mcp serve --transport streamable-http --auth tokens --tokens-file tokens.json
+```
+
+Tokens are shown once and stored only as SHA-256 hashes; `token revoke --name alice` removes one.
+
+**Microsoft Entra ID** (an organisation): the server validates access tokens issued for its API
+(signature against the tenant's published keys, issuer, audience, expiry, the `Evidence.Read`
+scope) and reads the clearance from **app roles** assigned in Entra (`Evidence.Public`,
+`Evidence.Internal`, `Evidence.Restricted`, highest wins). Who may see what is then managed where
+the organisation already manages access: by assigning users or groups to roles.
+
+```bash
+export EVIDENCE_MCP_ENTRA_TENANT_ID=<tenant id>
+export EVIDENCE_MCP_ENTRA_AUDIENCE=api://policy-evidence
+evidence-mcp serve --transport streamable-http --host 0.0.0.0 --auth entra \
+    --public-url https://evidence.example.org/mcp --allowed-host evidence.example.org
+```
+
+The app registration (exposed API, scope, app roles, assignment) is described step by step in
+[docs/entra-id.md](docs/entra-id.md).
+
+Serving on a network address without authentication is refused, unless
+`--allow-unauthenticated` states that a private network is the boundary (as inside the platform's
+container network, where only the agents service can reach the server). Every document search
+logs the caller and the ceiling applied, never the query text.
 
 ## Cost and sustainability
 
@@ -239,8 +283,7 @@ MCP.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.
-- [ ] **Identity-aware access**: authenticate HTTP clients (OAuth) and filter documents per user
-      instead of per server.
+- [x] **Identity-aware access**: bearer tokens or Entra ID, documents filtered per caller (0.3)
 - [ ] **Observability**: request tracing with OpenTelemetry (supported by the MCP SDK), cache hit
       rate and upstream latency.
 - [ ] **More providers**: the SDMX client is provider-neutral; test against ECB and Eurostat.

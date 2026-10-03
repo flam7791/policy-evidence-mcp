@@ -8,21 +8,67 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
 from .config import CLASSIFICATION_LEVELS, Settings
 
+LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+
+
+def build_auth(args: argparse.Namespace, public_url: str):
+    """The token verifier and MCP AuthSettings for --auth, or (None, None)."""
+    if args.auth == "none":
+        return None, None
+    from mcp.server.auth.settings import AuthSettings
+
+    from .auth import (
+        READ_SCOPE,
+        EntraSettings,
+        EntraTokenVerifier,
+        StaticTokenVerifier,
+        load_token_file,
+    )
+
+    if args.auth == "tokens":
+        verifier = StaticTokenVerifier(load_token_file(Path(args.tokens_file)))
+        issuer, scopes = public_url, [READ_SCOPE]
+    else:
+        entra = EntraSettings.from_env()
+        verifier = EntraTokenVerifier(entra)
+        issuer, scopes = entra.issuer, [READ_SCOPE]
+    auth = AuthSettings(
+        issuer_url=issuer,
+        resource_server_url=public_url,
+        required_scopes=scopes,
+        validate_token_resource=False,  # the verifiers check the audience themselves
+    )
+    return verifier, auth
+
 
 def _serve(args: argparse.Namespace, settings: Settings) -> int:
     from .server import create_server
 
-    server = create_server(settings)
     if args.transport == "stdio":
-        server.run("stdio")
+        create_server(settings).run("stdio")
         return 0
 
+    # An HTTP server reachable from other machines must authenticate its callers, unless the
+    # operator states that the network itself is the boundary (a private container network).
+    if args.auth == "none" and args.host not in LOOPBACK and not args.allow_unauthenticated:
+        print(
+            f"Refusing to serve without authentication on {args.host}. Use --auth tokens or "
+            "--auth entra, or --allow-unauthenticated inside a private network.",
+            file=sys.stderr,
+        )
+        return 2
+
     from mcp.server.transport_security import TransportSecuritySettings
+
+    public_url = args.public_url or f"http://{args.host}:{args.port}/mcp"
+    verifier, auth = build_auth(args, public_url)
+    server = create_server(settings, token_verifier=verifier, auth=auth)
 
     # DNS-rebinding protection: a malicious web page could otherwise make the browser call a
     # server listening on localhost. Only requests addressed to these hosts are accepted,
@@ -34,6 +80,25 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
         allowed_origins=[f"http://{h}:*" for h in hosts],
     )
     server.run("streamable-http", host=args.host, port=args.port, transport_security=security)
+    return 0
+
+
+def _token(args: argparse.Namespace, settings: Settings) -> int:
+    from .auth import AuthConfigError, create_token, load_token_file, revoke_token
+
+    path = Path(args.tokens_file)
+    try:
+        if args.action == "create":
+            token = create_token(path, args.name, args.clearance)
+            print(f"Token for {args.name} ({args.clearance}), shown once:\n{token}")
+        elif args.action == "revoke":
+            print("revoked" if revoke_token(path, args.name) else "no such token")
+        else:
+            for r in load_token_file(path):
+                print(f"{r.name:<20} {r.clearance}")
+    except AuthConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     return 0
 
 
@@ -151,6 +216,29 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="extra host name clients may use to reach the HTTP server (repeatable)",
     )
+    p.add_argument(
+        "--auth",
+        choices=["none", "tokens", "entra"],
+        default="none",
+        help="HTTP transport: bearer tokens from a token file, or Entra ID tokens",
+    )
+    p.add_argument(
+        "--tokens-file", default=os.environ.get("EVIDENCE_MCP_TOKENS_FILE", "tokens.json")
+    )
+    p.add_argument("--public-url", help="the URL clients use, e.g. https://evidence.example/mcp")
+    p.add_argument(
+        "--allow-unauthenticated",
+        action="store_true",
+        help="serve without auth on a non-loopback address (private networks only)",
+    )
+
+    p = sub.add_parser("token", help="manage bearer tokens for --auth tokens")
+    p.add_argument("action", choices=["create", "revoke", "list"])
+    p.add_argument("--name")
+    p.add_argument("--clearance", choices=CLASSIFICATION_LEVELS, default="public")
+    p.add_argument(
+        "--tokens-file", default=os.environ.get("EVIDENCE_MCP_TOKENS_FILE", "tokens.json")
+    )
 
     p = sub.add_parser("ingest", help="build the document index from a corpus folder")
     p.add_argument("--corpus", required=True)
@@ -183,7 +271,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)  # our own log line is enough
     settings = Settings.from_env()
-    handlers = {"serve": _serve, "ingest": _ingest, "search": _search, "eval": _eval}
+    if args.command == "token" and args.action != "list" and not args.name:
+        parser.error("token create/revoke needs --name")
+    handlers = {
+        "serve": _serve,
+        "ingest": _ingest,
+        "search": _search,
+        "eval": _eval,
+        "token": _token,
+    }
     return handlers[args.command](args, settings)
 
 
