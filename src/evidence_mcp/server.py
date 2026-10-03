@@ -26,10 +26,11 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import ToolAnnotations
+from opentelemetry import trace
 
 from . import __version__
 from .auth import caller, effective_ceiling
-from .config import Settings, classification_allowed
+from .config import CLASSIFICATION_LEVELS, Settings, classification_allowed
 from .http_cache import HttpFetcher, UpstreamError
 from .retrieval import Bm25Index, HybridIndex, load_index, searcher
 from .sdmx import SdmxClient
@@ -299,6 +300,21 @@ def create_server(
         ceiling = effective_ceiling(server_ceiling)
         hits = index.search(query, top_k, ceiling)
         log.info("search_documents caller=%s ceiling=%s hits=%d", caller(), ceiling, len(hits))
+        # The SDK opens a span per tool call (continuing the client's trace); this adds the
+        # access decision and the result shape. Never the query or the passages.
+        trace.get_current_span().set_attributes(
+            {
+                "evidence.ceiling": ceiling,
+                "evidence.server_ceiling": server_ceiling,
+                "evidence.hits": len(hits),
+                "evidence.search_mode": getattr(index, "last_mode", "keywords"),
+                "evidence.top_classification": max(
+                    (h.chunk.classification for h in hits),
+                    key=lambda c: CLASSIFICATION_LEVELS.index(c),
+                    default="none",
+                ),
+            }
+        )
         return {
             "query": query,
             "search_mode": getattr(index, "last_mode", "keywords"),
@@ -331,6 +347,9 @@ def create_server(
         visible = [
             d for d in meta["documents"] if classification_allowed(d["classification"], ceiling)
         ]
+        trace.get_current_span().set_attributes(
+            {"evidence.ceiling": ceiling, "evidence.documents": len(visible)}
+        )
         return {
             "built_at": meta.get("built_at"),
             "clearance": ceiling,

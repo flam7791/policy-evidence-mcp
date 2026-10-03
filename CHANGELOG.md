@@ -2,6 +2,19 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## 0.3.0
+
+- Access management on the HTTP transport: bearer tokens issued with `evidence-mcp token create`
+  (stored as hashes), or Microsoft Entra ID access tokens validated against the tenant's keys,
+  with clearance from app roles. Each caller sees documents up to the lower of the server's
+  ceiling and their clearance. Serving on a network address without authentication is refused
+  unless `--allow-unauthenticated` is given. The container now requires a token file.
+- `evidence-mcp sync-sharepoint`: a SharePoint library through Microsoft Graph (Sites.Selected),
+  classification from Purview sensitivity labels, unlabelled files treated as restricted,
+  incremental by eTag, citations pointing to SharePoint. Word documents (.docx) are indexed.
+- OpenTelemetry tracing (optional `tracing` extra): the access decision on each tool-call span,
+  no query or passage text.
+
 ## 0.2.0
 
 - Hybrid search: keywords plus embeddings (any OpenAI-compatible endpoint: Ollama, an LLM

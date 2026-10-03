@@ -48,8 +48,10 @@ def build_auth(args: argparse.Namespace, public_url: str):
 
 
 def _serve(args: argparse.Namespace, settings: Settings) -> int:
+    from . import tracing
     from .server import create_server
 
+    tracing.configure("policy-evidence-mcp")
     if args.transport == "stdio":
         create_server(settings).run("stdio")
         return 0

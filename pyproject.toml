@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "policy-evidence-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server giving AI assistants governed, cited access to official statistics (SDMX) and policy documents (RAG)."
 readme = "README.md"
 license = "MIT"
@@ -22,10 +22,12 @@ dependencies = [
     "httpx>=0.27,<1",   # HTTP client for the SDMX API
     "pypdf>=4.0",       # text extraction for PDF documents
     "tomli>=2.0; python_version < '3.11'",  # SharePoint sync configuration on Python 3.10
+    "opentelemetry-api>=1.27",  # tracing hooks; a no-op until the `tracing` extra is configured
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
+tracing = ["opentelemetry-sdk>=1.27", "opentelemetry-exporter-otlp-proto-http>=1.27"]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "opentelemetry-sdk>=1.27"]
 
 [project.scripts]
 evidence-mcp = "evidence_mcp.cli:main"

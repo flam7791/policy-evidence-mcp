@@ -206,6 +206,16 @@ Serving on a network address without authentication is refused, unless
 container network, where only the agents service can reach the server). Every document search
 logs the caller and the ceiling applied, never the query text.
 
+## Tracing (0.3)
+
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` (Jaeger, Grafana Tempo, an OpenTelemetry Collector) and install
+the `tracing` extra (in the container image). The MCP SDK opens a `tools/call <tool>` span for
+every call and continues the caller's trace from the request's `_meta`, so an agent's tool call
+and the server's work appear in one trace. The server adds the access decision to the span:
+the ceiling applied for this caller, the server's ceiling, the number of passages, the search
+mode and the most sensitive classification returned. **The query and the passages are never put
+on a span.** Without an endpoint, tracing is off.
+
 ## Cost and sustainability
 
 - **Server side:** no model calls, so no token cost; statistics are cached (catalogue 24 h,
@@ -299,8 +309,9 @@ MCP.
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.
 - [x] **Identity-aware access**: bearer tokens or Entra ID, documents filtered per caller (0.3)
-- [ ] **Observability**: request tracing with OpenTelemetry (supported by the MCP SDK), cache hit
-      rate and upstream latency.
+- [x] **Tracing**: OpenTelemetry spans per tool call with the access decision, joined with the
+      agent's trace (0.3)
+- [ ] **Metrics**: cache hit rate and upstream latency.
 - [ ] **More providers**: the SDMX client is provider-neutral; test against ECB and Eurostat.
 
 ## Project layout

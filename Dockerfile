@@ -15,7 +15,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[tracing]"
 
 # Build a keyword index at image build time from the (fictional) sample corpus. Mount your own
 # index at /app/index to serve real documents. For hybrid search, set EVIDENCE_MCP_EMBEDDINGS_URL
