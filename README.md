@@ -1,5 +1,7 @@
 # policy-evidence-mcp
 
+[![CI](https://github.com/flam7791/policy-evidence-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/flam7791/policy-evidence-mcp/actions/workflows/ci.yml) [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+
 An [MCP](https://modelcontextprotocol.io) server that gives AI assistants **governed, cited access
 to two kinds of evidence**:
 
