@@ -29,6 +29,8 @@ jobs:
           ruff format --check .
       - name: Unit, protocol and end-to-end tests (offline)
         run: pytest
+      - name: Dependency vulnerability scan (the project's own dependencies)
+        run: pip install pip-audit && pip-audit .
       - name: Retrieval evaluation (quality gate)
         env:
           EVIDENCE_MCP_MAX_CLASSIFICATION: internal

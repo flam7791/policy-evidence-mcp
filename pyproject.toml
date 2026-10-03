@@ -43,3 +43,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+# Recorded exceptions to the engineering standards (checked by aief check).
+[tool.aief.waivers]
+ENG-11 = "Operated as a component of governed-ai-platform: see its docs/runbook.md and docs/lifecycle.md"
