@@ -196,6 +196,24 @@ evidence-mcp eval --questions evals/paraphrase_questions.jsonl --mode compare \
 The comparison prints hit@1, hit@3, MRR and leaks for both modes. The cache file records every
 vector, so the same comparison replays offline (`--offline`) in CI once it is committed.
 
+### Results (live run, October 2026)
+
+`nomic-embed-text` through Ollama on a laptop, ceiling `internal`, k = 3. CI replays these
+vectors on every push.
+
+| Question set | Mode | hit@1 | hit@3 | MRR | Leaks |
+|---|---|---|---|---|---|
+| Direct questions (16) | keywords | 0.93 | 0.93 | 0.93 | 0 |
+| | **hybrid** | **1.00** | **1.00** | **1.00** | 0 |
+| Paraphrases (14) | keywords | 0.46 | 0.54 | 0.52 | 0 |
+| | **hybrid** | **0.69** | **0.77** | **0.77** | 0 |
+
+Hybrid search closes the gap on the direct questions (it now finds *"Can employees rely on a
+chatbot to pick which job applicants to hire?"*) and lifts the paraphrases from about half to
+three quarters, with no leak in either mode. Three paraphrases still miss, for example *"Which
+committee signs off on AI projects that affect people?"*, where the answer says "Digital
+Governance Board". That is the case for a reranker, next on the roadmap.
+
 Rules that keep it safe:
 
 - **Documents above the ceiling are never sent for embedding**, and the ceiling filters the
