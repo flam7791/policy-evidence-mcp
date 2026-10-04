@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "policy-evidence-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "MCP server giving AI assistants governed, cited access to official statistics (SDMX) and policy documents (RAG)."
 readme = "README.md"
 license = "MIT"
@@ -27,7 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tracing = ["opentelemetry-sdk>=1.27", "opentelemetry-exporter-otlp-proto-http>=1.27"]
-dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "opentelemetry-sdk>=1.27"]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "opentelemetry-sdk>=1.27", "pyyaml>=6"]
 
 [project.scripts]
 evidence-mcp = "evidence_mcp.cli:main"

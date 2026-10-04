@@ -66,8 +66,6 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
         )
         return 2
 
-    from mcp.server.transport_security import TransportSecuritySettings
-
     public_url = args.public_url or f"http://{args.host}:{args.port}/mcp"
     verifier, auth = build_auth(args, public_url)
     server = create_server(settings, token_verifier=verifier, auth=auth)
@@ -75,14 +73,28 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
     # DNS-rebinding protection: a malicious web page could otherwise make the browser call a
     # server listening on localhost. Only requests addressed to these hosts are accepted,
     # even when the process binds 0.0.0.0 inside a container.
-    hosts = ["127.0.0.1", "localhost", *args.allowed_host]
-    security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=[f"{h}:*" for h in hosts],
-        allowed_origins=[f"http://{h}:*" for h in hosts],
-    )
+    security = transport_security(args.allowed_host)
     server.run("streamable-http", host=args.host, port=args.port, transport_security=security)
     return 0
+
+
+def transport_security(extra_hosts: list[str]):
+    """Hosts and origins the server answers to (DNS-rebinding protection).
+
+    Each host is accepted with any port, and without one: behind a TLS reverse proxy (as when
+    Copilot Studio calls https://evidence.example.org/mcp) the Host header carries no port.
+    """
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    hosts = ["127.0.0.1", "localhost", *extra_hosts]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[*hosts, *(f"{h}:*" for h in hosts)],
+        allowed_origins=[
+            *(f"{scheme}://{h}" for scheme in ("http", "https") for h in hosts),
+            *(f"{scheme}://{h}:*" for scheme in ("http", "https") for h in hosts),
+        ],
+    )
 
 
 def _sync_sharepoint(args: argparse.Namespace, settings: Settings) -> int:

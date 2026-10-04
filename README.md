@@ -168,6 +168,19 @@ evidence-mcp sync-sharepoint --config sharepoint.toml --out corpus-sharepoint
 evidence-mcp ingest --corpus corpus-sharepoint --ceiling internal
 ```
 
+## Microsoft 365 Copilot through Copilot Studio (0.3.1)
+
+[integrations/copilot-studio](integrations/copilot-studio/) connects a Copilot Studio agent to
+this server as an MCP tool, published to Microsoft 365 Copilot and Teams. The agent calls the
+server with the **signed-in user's** Entra ID token, so each person sees documents up to their
+own clearance, managed by role assignment in Entra; the agent holds no broader credential. The
+folder has the custom connector (streamable MCP, OAuth 2.0 with Entra ID), the agent's
+instructions and the setup steps; tests check that the connector asks for exactly the scope the
+server requires. It is configuration for a tenant, not a tested deployment.
+
+Together with the SharePoint sync, the chain is: documents labelled in Purview, synced through
+Microsoft Graph with their labels as classification, served to Copilot users within their roles.
+
 ## Access management (0.3)
 
 Over HTTP, every request needs a bearer token, and each caller sees documents up to **the lower

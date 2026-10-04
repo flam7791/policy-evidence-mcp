@@ -2,6 +2,13 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## 0.3.1
+
+- Microsoft 365 Copilot through Copilot Studio: custom connector (streamable MCP, OAuth 2.0 with
+  Entra ID), agent instructions and setup steps in `integrations/copilot-studio`, with tests.
+- Hosts are accepted without a port, as sent through a TLS reverse proxy or ingress (they were
+  refused with DNS-rebinding protection on).
+
 ## 0.3.0
 
 - Access management on the HTTP transport: bearer tokens issued with `evidence-mcp token create`

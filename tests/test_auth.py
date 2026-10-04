@@ -219,3 +219,18 @@ async def test_http_requires_a_token_and_filters_by_clearance(http_server):
     internal_levels = {d["classification"] for d in internal_view["documents"]}
     assert public_levels == {"public"}
     assert "internal" in internal_levels and "restricted" not in internal_levels
+
+
+def test_hosts_are_accepted_with_and_without_a_port():
+    """Behind a TLS proxy (Copilot Studio, an ingress) the Host header has no port."""
+    from mcp.server.transport_security import TransportSecurityMiddleware
+
+    from evidence_mcp.cli import transport_security
+
+    check = TransportSecurityMiddleware(transport_security(["evidence.example.org"]))
+    assert check._validate_host("evidence.example.org")
+    assert check._validate_host("evidence.example.org:443")
+    assert check._validate_host("127.0.0.1:8000")
+    assert not check._validate_host("attacker.example")
+    assert check._validate_origin("https://evidence.example.org")
+    assert not check._validate_origin("https://attacker.example")
