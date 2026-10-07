@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Pattern | P1 governed retrieval and P2 read-only MCP tool server ([ai-engineering-framework](https://github.com/flam7791/ai-engineering-framework)) |
-| Models | None for keyword search; an embedding model for hybrid search (local `nomic-embed-text` through Ollama by default, or any OpenAI-compatible endpoint) |
+| Models | None for keyword search; an embedding model for hybrid search (local `nomic-embed-text` through Ollama by default, or any OpenAI-compatible endpoint); optionally a chat model that grades the top passages (reranking, off by default) |
 | Classification ceiling | Set per server (`EVIDENCE_MCP_MAX_CLASSIFICATION`) |
 
 ## Intended use
@@ -21,12 +21,17 @@ interpreting statistics (the server returns data with provenance, the client int
 Statistics come from the configured public API with their query URL. Documents are indexed
 locally; documents above the ceiling are skipped at ingestion and filtered again at query time.
 The index records the number of excluded documents, not their names. With local embeddings, no
-document text leaves the machine.
+document text leaves the machine. With reranking on, the top passages of each search, and the
+question, are sent to the reranking model; it sees only passages the caller may see, and none
+above `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION` when that is set.
 
 ## How it can fail
 
 - A relevant passage is missed (keyword search is weak on paraphrases; hybrid search narrows the
   gap but does not close it, see the evaluation in the README).
+- The reranking model grades a passage wrongly and pushes the answer below the top results; the
+  grades only reorder what search found, and the evaluation with and without `--rerank` measures
+  the net effect. A reply that is not a valid grade for every passage keeps the search order.
 - Indirect prompt injection in a document reaches the client as data; results are marked as data,
   a mitigation and not a guarantee. The client must still treat them as untrusted.
 - The HTTP transport has no authentication of its own.

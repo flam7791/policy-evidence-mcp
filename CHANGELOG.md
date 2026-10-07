@@ -2,6 +2,18 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## 0.4.0
+
+- Optional reranking: one call to an OpenAI-compatible chat model per search grades the top 20
+  passages from 0 to 3, and results are re-sorted by grade. A reply that does not grade every
+  passage with a valid value keeps the search order and says so in `search_mode`. The reranking
+  model sees only passages the caller may see (and none above
+  `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION`). Results carry `relevance`. Off by default.
+- `evidence-mcp eval --rerank --rerank-cache FILE`: evaluate each mode with and without
+  reranking; grades are recorded once and replayed offline. No live run is recorded yet.
+- `AGENTS.md` for coding agents (`CLAUDE.md` imports it), and `skills/policy-evidence/SKILL.md`
+  for assistants that call the tools.
+
 ## 0.3.1
 
 - Microsoft 365 Copilot through Copilot Studio: custom connector (streamable MCP, OAuth 2.0 with

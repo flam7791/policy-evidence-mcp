@@ -32,6 +32,7 @@ from . import __version__
 from .auth import caller, effective_ceiling
 from .config import CLASSIFICATION_LEVELS, Settings, classification_allowed
 from .http_cache import HttpFetcher, UpstreamError
+from .rerank import reranked
 from .retrieval import Bm25Index, HybridIndex, load_index, searcher
 from .sdmx import SdmxClient
 from .validation import (
@@ -83,9 +84,11 @@ class DocumentStore:
     With an embedder and an index that has vectors, search is hybrid; otherwise keywords.
     """
 
-    def __init__(self, index_path: Path, embedder=None):
+    def __init__(self, index_path: Path, embedder=None, reranker=None, settings=None):
         self.index_path = index_path
         self.embedder = embedder
+        self.reranker = reranker
+        self.settings = settings or Settings()
         self._lock = threading.Lock()
         self._mtime: float | None = None
         self._meta: dict = {}
@@ -103,7 +106,12 @@ class DocumentStore:
             if self._bm25 is None or mtime != self._mtime:
                 log.info("loading index %s", self.index_path)
                 self._meta, keyword_index = load_index(self.index_path)
-                self._bm25 = searcher(self._meta, keyword_index, self.embedder)
+                self._bm25 = reranked(
+                    searcher(self._meta, keyword_index, self.embedder),
+                    self.reranker,
+                    depth=self.settings.rerank_depth,
+                    max_classification=self.settings.rerank_max_classification,
+                )
                 self._mtime = mtime
             return self._meta, self._bm25
 
@@ -114,12 +122,18 @@ def create_server(
     embedder=None,
     token_verifier=None,
     auth=None,
+    reranker=None,
 ) -> MCPServer:
     """Build the server. With `token_verifier` and `auth` (mcp AuthSettings), the HTTP transport
     requires a bearer token and each caller sees documents up to their own clearance."""
     settings = settings or Settings.from_env()
     sdmx = SdmxClient(fetcher or HttpFetcher(settings))
-    store = DocumentStore(settings.index_path, embedder or settings.embedder())
+    store = DocumentStore(
+        settings.index_path,
+        embedder or settings.embedder(),
+        reranker or settings.reranker(),
+        settings,
+    )
     server_ceiling = settings.max_classification
 
     server = MCPServer(
@@ -329,6 +343,7 @@ def create_server(
                     "source": hit.chunk.source,
                     "classification": hit.chunk.classification,
                     "matched_by": hit.matched_by,
+                    "relevance": hit.relevance,
                     "text": hit.chunk.text,
                 }
                 for rank, hit in enumerate(hits, start=1)
@@ -353,7 +368,10 @@ def create_server(
         return {
             "built_at": meta.get("built_at"),
             "clearance": ceiling,
-            "search": "hybrid" if isinstance(index, HybridIndex) else "keywords",
+            "search": (
+                "hybrid" if isinstance(getattr(index, "inner", index), HybridIndex) else "keywords"
+            )
+            + (" + reranking" if index is not getattr(index, "inner", index) else ""),
             "embedding_model": meta.get("embedding_model"),
             "documents": visible,
         }

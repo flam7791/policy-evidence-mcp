@@ -98,6 +98,11 @@ Claude Desktop (`claude_desktop_config.json`), Windows example:
 
 To inspect the tools interactively: `npx @modelcontextprotocol/inspector evidence-mcp serve`.
 
+A skill tells the assistant how to use the tools well: the three statistics calls in order,
+narrow keys, a citation on every figure and passage, and passages treated as data. Copy
+[`skills/policy-evidence`](skills/policy-evidence/SKILL.md) into your assistant's skills folder
+(for Claude Code, `~/.claude/skills/`).
+
 Over HTTP (for clients that connect by URL):
 
 ```bash
@@ -120,6 +125,11 @@ All settings are environment variables with safe defaults.
 | `EVIDENCE_MCP_EMBEDDINGS_URL` | none | OpenAI-compatible embeddings endpoint; unset = keywords only |
 | `EVIDENCE_MCP_EMBEDDINGS_MODEL` | `nomic-embed-text` | Embedding model (`auto` through a gateway) |
 | `EVIDENCE_MCP_EMBEDDINGS_API_KEY` | none | Key for that endpoint, if it needs one |
+| `EVIDENCE_MCP_RERANK_URL` | none | OpenAI-compatible chat endpoint that grades the top passages; unset = no reranking |
+| `EVIDENCE_MCP_RERANK_MODEL` | `qwen2.5:7b` | Reranking model (`auto` through a gateway) |
+| `EVIDENCE_MCP_RERANK_API_KEY` | none | Key for that endpoint, if it needs one |
+| `EVIDENCE_MCP_RERANK_DEPTH` | `20` | Passages graded per search (2 to 50) |
+| `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION` | the caller's ceiling | Highest level whose passages the reranking model may see |
 | `EVIDENCE_MCP_TOKENS_FILE` | `tokens.json` | Hashed tokens for `--auth tokens` |
 | `EVIDENCE_MCP_ENTRA_TENANT_ID` / `_AUDIENCE` | none | Entra ID tenant and the API's Application ID URI, for `--auth entra` |
 | `EVIDENCE_MCP_ENTRA_SCOPE` | `Evidence.Read` | Delegated scope a token must carry |
@@ -312,12 +322,50 @@ an internal container, re-indexes at start with a local embedding model through 
 (whose `local_only` policy guarantees document text never leaves), and serves the agents over
 MCP.
 
+## Reranking (0.4)
+
+Hybrid search finds words and meaning; it does not read a passage as an answer. The optional
+reranker does: one call to a chat model per search grades each of the top 20 passages from 0
+(unrelated) to 3 (answers the question), and the passages are re-sorted by grade, ties kept in
+search order.
+
+It is a bounded judgment, not generation ([pattern P7](https://github.com/flam7791/ai-engineering-framework/blob/main/docs/patterns.md)):
+
+- **A closed answer set.** The reply must give every passage a grade from 0 to 3. A missing,
+  extra or out-of-range grade is no decision: search keeps its own order and says so in
+  `search_mode`. Grades reorder what search found; they cannot add a passage.
+- **The ceiling first.** The reranking model sees only passages the caller may see, and none
+  above `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION` when that is set; those keep their positions.
+- **Passages are data.** Only a list of grades is read back, so an instruction planted in a
+  passage can at most change its own grade.
+- **Off by default.** It adds a model call to every search. Use a local model, or the gateway
+  with a `local_only` team, when the documents are internal.
+
+```bash
+ollama pull qwen2.5:7b
+export EVIDENCE_MCP_RERANK_URL=http://localhost:11434/v1
+export EVIDENCE_MCP_EMBEDDINGS_URL=http://localhost:11434/v1
+export EVIDENCE_MCP_MAX_CLASSIFICATION=internal
+CACHE="--embeddings-cache evals/embeddings.json"
+evidence-mcp ingest --corpus sample_corpus --out build/hybrid.json --embeddings $CACHE --offline
+# Record the grades once with the live model, then replay them offline (CI does)
+evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
+  --mode compare --min-hit 0 $CACHE --rerank --rerank-cache evals/rerank-qwen2.5-7b.json
+evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
+  --mode compare --min-hit 0 $CACHE --rerank --rerank-cache evals/rerank-qwen2.5-7b.json --offline
+```
+
+The table gains `keywords + rerank` and `hybrid + rerank` rows. **Not measured yet:** no live
+reranking run has been recorded, so there is no result to report here. Record one per model you
+would deploy, commit the `evals/rerank-<model>.json` file, and compare hit@3, MRR and the time
+the run took against the hybrid row before turning it on.
+
 ## Limitations and roadmap
 
 - [x] **Hybrid retrieval**: embeddings alongside BM25 with rank fusion, compared on the same
       evaluation (0.2)
-- [ ] **Reranking**: a cross-encoder or model-based reranker over the fused top 20, if the
-      evaluation shows it pays for its latency.
+- [x] **Reranking**: a model-based reranker over the fused top 20, graded from a closed set,
+      off by default (0.4). Next: record live runs and decide on the evidence.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.
@@ -336,15 +384,18 @@ src/evidence_mcp/
   http_cache.py   host allowlist, disk cache, rate limit, retries, size cap
   documents.py    loading (md/txt/pdf), metadata, heading-aware chunking
   retrieval.py    BM25 and hybrid search, sensitivity ceiling, index files
+  rerank.py       optional reranking: grades 0-3 from a chat model, recorded for replay
   embeddings.py   OpenAI-compatible embeddings client, recorded vectors for replay
   evaluation.py   hit@k, MRR, leak detection
   validation.py   input patterns
   config.py       settings and classification levels
   cli.py          serve | ingest | search | eval
+skills/           a SKILL.md for assistants that call the MCP tools
 tests/            offline unit, protocol and end-to-end tests with recorded fixtures
 evals/            labelled question sets
 sample_corpus/    fictional documents for tests and demos
 docs/             design decisions
+AGENTS.md         commands and invariants for coding agents (CLAUDE.md imports it)
 ```
 
 ## Development

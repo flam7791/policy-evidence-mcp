@@ -60,6 +60,7 @@ class SearchHit:
     score: float
     chunk: Chunk
     matched_by: str = "keywords"  # "keywords", "meaning" or "keywords and meaning"
+    relevance: int | None = None  # 0-3 from the reranker, when one graded this passage
 
 
 class Bm25Index:

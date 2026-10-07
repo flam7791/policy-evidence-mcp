@@ -182,16 +182,39 @@ def _ingest(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def _reranker(args: argparse.Namespace, settings: Settings):
+    """The grader for --rerank: live, recorded to a cache file, or replayed offline."""
+    from .rerank import RerankCache
+
+    live = settings.reranker()
+    cache = getattr(args, "rerank_cache", None)
+    if cache:
+        return RerankCache(Path(cache), live, offline=args.offline)
+    if live is None or args.offline:
+        raise SystemExit(
+            "Reranking needs EVIDENCE_MCP_RERANK_URL (e.g. http://localhost:11434/v1), "
+            "or --rerank-cache FILE with recorded grades."
+        )
+    return live
+
+
 def _search(args: argparse.Namespace, settings: Settings) -> int:
+    from .rerank import reranked
     from .retrieval import load_index, searcher
 
     meta, keyword_index = load_index(Path(args.index) if args.index else settings.index_path)
-    index = searcher(meta, keyword_index, settings.embedder())
+    index = reranked(
+        searcher(meta, keyword_index, settings.embedder()),
+        settings.reranker(),
+        depth=settings.rerank_depth,
+        max_classification=settings.rerank_max_classification,
+    )
     hits = index.search(args.query, args.top_k, settings.max_classification)
     print(f"Search mode: {getattr(index, 'last_mode', 'keywords')}\n")
     for rank, hit in enumerate(hits, 1):
+        grade = f", grade {hit.relevance}" if hit.relevance is not None else ""
         print(
-            f"{rank}. [{hit.score:.2f}, {hit.matched_by}] {hit.chunk.citation()}\n"
+            f"{rank}. [{hit.score:.2f}, {hit.matched_by}{grade}] {hit.chunk.citation()}\n"
             f"   {hit.chunk.text[:200]}...\n"
         )
     return 0
@@ -199,6 +222,7 @@ def _search(args: argparse.Namespace, settings: Settings) -> int:
 
 def _eval(args: argparse.Namespace, settings: Settings) -> int:
     from .evaluation import evaluate, load_questions
+    from .rerank import RerankReplayMiss, reranked
     from .retrieval import load_index, searcher
 
     meta, keyword_index = load_index(Path(args.index) if args.index else settings.index_path)
@@ -206,28 +230,42 @@ def _eval(args: argparse.Namespace, settings: Settings) -> int:
     modes = ["keywords", "hybrid"] if args.mode == "compare" else [args.mode]
     if "hybrid" in modes and not meta.get("vectors"):
         raise SystemExit("This index has no vectors: run `evidence-mcp ingest --embeddings`.")
+    grader = _reranker(args, settings) if args.rerank else None
 
     ok = True
     print(f"| Mode | hit@1 | hit@{args.k} | MRR | Leaks |\n|---|---|---|---|---|")
     reports = {}
-    for mode in modes:
-        index = (
+    runs = [(mode, False) for mode in modes] + ([(mode, True) for mode in modes] if grader else [])
+    for mode, rerank in runs:
+        base = (
             searcher(meta, keyword_index, _embedder(args, settings))
             if mode == "hybrid"
             else keyword_index
         )
-        report = evaluate(index, questions, settings.max_classification, args.k)
-        if getattr(index, "fallbacks", 0):
-            raise SystemExit(f"Hybrid search fell back to keywords: {index.last_mode}")
-        reports[mode] = report
+        index = (
+            reranked(base, grader, settings.rerank_depth, settings.rerank_max_classification)
+            if rerank
+            else base
+        )
+        label = f"{mode} + rerank" if rerank else mode
+        try:
+            report = evaluate(index, questions, settings.max_classification, args.k)
+        except RerankReplayMiss as exc:
+            raise SystemExit(f"Reranking replay incomplete: {exc}") from None
+        if getattr(base, "fallbacks", 0):
+            raise SystemExit(f"Hybrid search fell back to keywords: {base.last_mode}")
+        if rerank and index.fallbacks:
+            # Recorded, not hidden: a model that answers badly is part of what is measured.
+            print(f"  {label}: grading failed on {index.fallbacks} question(s); order kept")
+        reports[label] = report
         print(
-            f"| {mode} | {report.hit_at_1:.2f} | {report.hit_at_k:.2f} | {report.mrr:.2f} | "
+            f"| {label} | {report.hit_at_1:.2f} | {report.hit_at_k:.2f} | {report.mrr:.2f} | "
             f"{report.leaks} |"
         )
         ok = ok and report.passed(args.min_hit)
-    for mode, report in reports.items():
+    for label, report in reports.items():
         for miss in report.misses:
-            print(f"  {mode} miss: {miss}")
+            print(f"  {label} miss: {miss}")
     print("PASS" if ok else f"FAIL (need hit@{args.k} >= {args.min_hit} and zero leaks)")
     return 0 if ok else 1
 
@@ -235,7 +273,9 @@ def _eval(args: argparse.Namespace, settings: Settings) -> int:
 def embedding_options(p: argparse.ArgumentParser) -> None:
     p.add_argument("--embeddings-cache", help="record vectors to / replay them from this JSON file")
     p.add_argument(
-        "--offline", action="store_true", help="replay recorded vectors only; never call a model"
+        "--offline",
+        action="store_true",
+        help="replay recorded vectors and grades only; never call a model",
     )
 
 
@@ -305,6 +345,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--min-hit", type=float, default=0.8, help="minimum hit@k to pass")
     p.add_argument("--index")
     p.add_argument("--mode", choices=["keywords", "hybrid", "compare"], default="keywords")
+    p.add_argument(
+        "--rerank",
+        action="store_true",
+        help="also evaluate each mode with reranking (EVIDENCE_MCP_RERANK_URL or --rerank-cache)",
+    )
+    p.add_argument("--rerank-cache", help="record grades to / replay them from this JSON file")
     embedding_options(p)
 
     args = parser.parse_args(argv)

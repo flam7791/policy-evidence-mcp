@@ -49,6 +49,12 @@ jobs:
           # Paraphrases: report both modes; only a leak fails the build here.
           evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
             --mode compare --min-hit 0 $CACHE
+          # Reranking: replay each recorded model's grades, if any (evals/rerank-<model>.json).
+          for grades in evals/rerank-*.json; do
+            [ -f "$grades" ] || continue
+            evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
+              --mode compare --min-hit 0 $CACHE --rerank --rerank-cache "$grades"
+          done
 
   docker:
     runs-on: ubuntu-latest

@@ -30,6 +30,14 @@ class Settings:
     embeddings_url: str | None = None
     embeddings_model: str = "nomic-embed-text"
     embeddings_api_key: str | None = None
+    # Reranking (optional, 0.4): an OpenAI-compatible /chat/completions endpoint grades the top
+    # passages of each search. Unset = no reranking. The reranking model only sees passages at
+    # or below rerank_max_classification (default: the caller's own ceiling).
+    rerank_url: str | None = None
+    rerank_model: str = "qwen2.5:7b"
+    rerank_api_key: str | None = None
+    rerank_depth: int = 20
+    rerank_max_classification: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -51,6 +59,14 @@ class Settings:
             embeddings_url=env.get("EVIDENCE_MCP_EMBEDDINGS_URL") or None,
             embeddings_model=env.get("EVIDENCE_MCP_EMBEDDINGS_MODEL", defaults.embeddings_model),
             embeddings_api_key=env.get("EVIDENCE_MCP_EMBEDDINGS_API_KEY") or None,
+            rerank_url=env.get("EVIDENCE_MCP_RERANK_URL") or None,
+            rerank_model=env.get("EVIDENCE_MCP_RERANK_MODEL", defaults.rerank_model),
+            rerank_api_key=env.get("EVIDENCE_MCP_RERANK_API_KEY") or None,
+            rerank_depth=int(env.get("EVIDENCE_MCP_RERANK_DEPTH", defaults.rerank_depth)),
+            rerank_max_classification=(
+                env.get("EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION") or ""
+            ).lower()
+            or None,
         )
         settings.validate()
         return settings
@@ -65,6 +81,14 @@ class Settings:
             self.embeddings_url, self.embeddings_model, api_key=self.embeddings_api_key
         )
 
+    def reranker(self):
+        """The configured reranking client, or None for no reranking."""
+        if not self.rerank_url:
+            return None
+        from .rerank import ChatReranker
+
+        return ChatReranker(self.rerank_url, self.rerank_model, api_key=self.rerank_api_key)
+
     def validate(self) -> None:
         if self.max_classification not in CLASSIFICATION_LEVELS:
             raise ValueError(
@@ -75,6 +99,15 @@ class Settings:
             raise ValueError("EVIDENCE_MCP_SDMX_BASE_URL must use https://")
         if self.rate_limit_per_hour < 1:
             raise ValueError("EVIDENCE_MCP_RATE_LIMIT_PER_HOUR must be at least 1")
+        if not 2 <= self.rerank_depth <= 50:
+            raise ValueError("EVIDENCE_MCP_RERANK_DEPTH must be between 2 and 50")
+        if (
+            self.rerank_max_classification is not None
+            and self.rerank_max_classification not in CLASSIFICATION_LEVELS
+        ):
+            raise ValueError(
+                f"EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION must be one of {CLASSIFICATION_LEVELS}"
+            )
 
 
 def classification_allowed(level: str, ceiling: str) -> bool:

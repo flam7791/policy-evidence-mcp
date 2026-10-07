@@ -85,3 +85,20 @@ falls back to keywords and says so.
 **Consequences.** Better recall on paraphrases where the evaluation shows it, with no new
 failure mode: an embedding outage degrades search instead of breaking it. Changing the
 embedding model means re-indexing, deliberately.
+
+## 10. Reranking as a bounded judgment, off by default
+
+**Context.** After hybrid search, three paraphrases still miss, for example *"Which committee
+signs off on AI projects that affect people?"*, whose answer says "Digital Governance Board".
+Ranking by words and by meaning does not read a passage as an answer to a question.
+**Decision.** An optional reranker: one call to an OpenAI-compatible chat model per query, which
+grades each of the top 20 passages from 0 to 3. The reply must grade every passage with a valid
+value; anything else keeps the search order and says so in `search_mode`. Grades reorder, they
+never add a passage. The reranking model sees only what the caller may see, and an optional
+lower ceiling keeps sensitive passages out of its prompt. Grades are recorded and replayed like
+the vectors. A cross-encoder was the alternative: cheaper per query, but one more model type to
+host, and no local option as simple as the Ollama endpoint the platform already runs.
+**Consequences.** A model call per search, so latency and, with an external model, cost and data
+egress: off unless `EVIDENCE_MCP_RERANK_URL` is set, and in the platform it goes through the
+gateway with a `local_only` team. Whether it pays is measured on the paraphrase set with
+`--rerank`; until that run is recorded, the README reports no result for it.
