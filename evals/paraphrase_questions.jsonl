@@ -1,4 +1,5 @@
 // Questions worded unlike the documents: the gap keyword search cannot close on its own.
+// x01-x13 and s03 since 0.3 (frozen copy in paraphrase_questions_v1.jsonl); x14-x40, s04-s05 added in October 2026.
 // Compare modes with: evidence-mcp eval --questions evals/paraphrase_questions.jsonl --mode compare
 {"id": "x01", "question": "Can I use a free chatbot from the web with my own sign-in for office tasks?", "expected_doc": "public/ai-use-policy"}
 {"id": "x02", "question": "Who do I tell if a bot leaked confidential material?", "expected_doc": "public/ai-use-policy"}
@@ -13,4 +14,33 @@
 {"id": "x11", "question": "Which committee signs off on AI projects that affect people?", "expected_doc": "internal/ai-use-case-intake"}
 {"id": "x12", "question": "Who foots the bill when a team goes over its included quota?", "expected_doc": "internal/ai-use-case-intake"}
 {"id": "x13", "question": "How long can a pilot run with testers before it has to go live properly?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x14", "question": "Does the rule book on chatbots also cover interns and outside consultants?", "expected_doc": "public/ai-use-policy"}
+{"id": "x15", "question": "If a bot drafts something wrong and I send it anyway, whose fault is it?", "expected_doc": "public/ai-use-policy"}
+{"id": "x16", "question": "Can I have a bot make up a quote from a minister to liven up a speech?", "expected_doc": "public/ai-use-policy"}
+{"id": "x17", "question": "Will I be punished for owning up that I fed a sensitive file to a bot?", "expected_doc": "public/ai-use-policy"}
+{"id": "x18", "question": "Do I have to mention that a machine helped with a working draft that stays in-house?", "expected_doc": "public/ai-use-policy"}
+{"id": "x19", "question": "Can I add a writing helper plug-in to my web browser for work?", "expected_doc": "public/ai-use-policy"}
+{"id": "x20", "question": "Does somebody need to read machine-written text before it goes out to another organisation?", "expected_doc": "public/ai-use-policy"}
+{"id": "x21", "question": "There is a lawsuit coming: can the files linked to it still be shredded on the usual timetable?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x22", "question": "What happens to the offers from firms that did not win the contract?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x23", "question": "How long do we hang on to CVs from people we turned down?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x24", "question": "When does a shared team workspace disappear if nobody uses it any more?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x25", "question": "From what date does the clock start on how long something is kept?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x26", "question": "If a chatbot answer ends up shaping a final decision, does it have to be saved?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x27", "question": "How many sensitivity tiers does the Institute use?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x28", "question": "Can I pass an internal file to an organisation we work with?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x29", "question": "What do I need before sending a confidential file to someone outside?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x30", "question": "Where am I allowed to store files containing people's personal details?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x31", "question": "Is there any way to run our most sensitive data through a language model?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x32", "question": "I'm not sure how sensitive a document is: which marking should I choose?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x33", "question": "Do unpublished budget numbers count as sensitive?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x34", "question": "Do I need permission before building a bot that answers questions from my team's files?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x35", "question": "What do I have to put in the paperwork when proposing a new AI project?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x36", "question": "Who has to give the go-ahead for a medium-risk AI tool?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x37", "question": "How soon will I hear a first opinion on my AI proposal?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x38", "question": "When are the running costs of a new AI service looked at again?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x39", "question": "Who answers for an AI tool once people use it every day?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x40", "question": "Can the AI team clear a small drafting helper over public material on its own?", "expected_doc": "internal/ai-use-case-intake"}
 {"id": "s03", "question": "What cuts are planned if funding stays flat next year?", "forbidden_doc": "restricted/board-budget-scenarios"}
+{"id": "s04", "question": "Will we hire data engineers if the budget grows?", "forbidden_doc": "restricted/board-budget-scenarios"}
+{"id": "s05", "question": "Does hiring stop if money is tight next year?", "forbidden_doc": "restricted/board-budget-scenarios"}

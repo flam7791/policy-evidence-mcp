@@ -4,6 +4,10 @@ Versions follow [semantic versioning](https://semver.org).
 
 ## Unreleased
 
+- The paraphrase set grows from 13 scored questions and one leak check to 40 and three
+  (`x14`-`x40`, `s04`-`s05`), about ten per document, written before any search was run on
+  them. The first 14 stay frozen in `evals/paraphrase_questions_v1.jsonl`, where CI replays the
+  `list` format recording; the `objects` recording is replayed on the full set.
 - Live run of the `list` answer format, Qwen 2.5 7B on a laptop CPU, recorded in
   `evals/rerank-qwen2.5-7b-ctx8k-list.json` and replayed in CI: hybrid + rerank hit@1 0.77 and
   MRR 0.83 against 0.85 and 0.87 for `objects`, 7 searches with no decision against 6, 54

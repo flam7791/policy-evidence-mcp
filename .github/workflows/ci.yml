@@ -49,12 +49,12 @@ jobs:
           # Paraphrases: report both modes; only a leak fails the build here.
           evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
             --mode compare --min-hit 0 $CACHE
-          # Reranking: replay each recorded model's grades, if any (evals/rerank-<model>.json).
-          for grades in evals/rerank-*.json; do
-            [ -f "$grades" ] || continue
-            evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
-              --mode compare --min-hit 0 $CACHE --rerank --rerank-cache "$grades"
-          done
+          # Reranking: replay the recorded grades on the questions each run was recorded on.
+          evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hybrid.json \
+            --mode compare --min-hit 0 $CACHE --rerank --rerank-cache evals/rerank-qwen2.5-7b-ctx8k.json
+          # The list format lost on the first 14 questions and was not run on the larger set.
+          evidence-mcp eval --questions evals/paraphrase_questions_v1.jsonl --index build/hybrid.json \
+            --mode compare --min-hit 0 $CACHE --rerank --rerank-cache evals/rerank-qwen2.5-7b-ctx8k-list.json
 
   docker:
     runs-on: ubuntu-latest

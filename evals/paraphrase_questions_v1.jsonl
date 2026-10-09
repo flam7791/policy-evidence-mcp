@@ -1,0 +1,16 @@
+// The first 14 paraphrase questions, frozen: the `list` reranking format was recorded on this
+// set only (evals/rerank-qwen2.5-7b-ctx8k-list.json), and CI replays it here. Do not edit.
+{"id": "x01", "question": "Can I use a free chatbot from the web with my own sign-in for office tasks?", "expected_doc": "public/ai-use-policy"}
+{"id": "x02", "question": "Who do I tell if a bot leaked confidential material?", "expected_doc": "public/ai-use-policy"}
+{"id": "x03", "question": "Must readers be told when a machine wrote much of a report?", "expected_doc": "public/ai-use-policy"}
+{"id": "x04", "question": "Can employees rely on a chatbot to pick which job applicants to hire?", "expected_doc": "public/ai-use-policy"}
+{"id": "x05", "question": "How long do we keep the paperwork for suppliers once a deal is over?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x06", "question": "Are old messages in our inbox wiped at some point?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x07", "question": "Do board meeting notes ever get thrown away?", "expected_doc": "public/records-retention-schedule"}
+{"id": "x08", "question": "Can I paste salary data into an outside chatbot?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x09", "question": "How do I mark a highly sensitive file?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x10", "question": "When can a secret document become less secret?", "expected_doc": "internal/data-classification-guide"}
+{"id": "x11", "question": "Which committee signs off on AI projects that affect people?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x12", "question": "Who foots the bill when a team goes over its included quota?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "x13", "question": "How long can a pilot run with testers before it has to go live properly?", "expected_doc": "internal/ai-use-case-intake"}
+{"id": "s03", "question": "What cuts are planned if funding stays flat next year?", "forbidden_doc": "restricted/board-budget-scenarios"}
