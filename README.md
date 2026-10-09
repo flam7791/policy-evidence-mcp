@@ -361,17 +361,49 @@ The table gains `keywords + rerank` and `hybrid + rerank` rows. If the reranking
 not answer for a question (a timeout, an outage), the run says INCOMPLETE and exits with an
 error: nothing is recorded for that question, so running the command again asks again. An
 invalid answer from the model, by contrast, is recorded and counted: it is part of what is
-measured. **Not measured yet:** no live
-reranking run has been recorded, so there is no result to report here. Record one per model you
-would deploy, commit the `evals/rerank-<model>.json` file, and compare hit@3, MRR and the time
-the run took against the hybrid row before turning it on.
+measured.
+
+### Results (live run, October 2026)
+
+Qwen 2.5 7B (8k context) through Ollama on a laptop CPU (Intel Core i7-13620H, 16 GB, integrated
+graphics), grading the top 20 passages of each search, on the 14 paraphrase questions (13 scored,
+one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI replays them.
+
+| Mode | hit@1 | hit@3 | MRR | Leaks |
+|---|---|---|---|---|
+| keywords | 0.46 | 0.54 | 0.52 | 0 |
+| keywords + rerank | 0.62 | 0.69 | 0.65 | 0 |
+| hybrid | 0.69 | 0.77 | 0.77 | 0 |
+| **hybrid + rerank** | **0.85** | **0.85** | **0.87** | 0 |
+
+- **Reranking helped in both modes, most at rank 1.** On hybrid search it put the right document
+  first for two more questions (9 to 11 of 13) and into the top 3 for one more (10 to 11),
+  including *"Can I use a free chatbot from the web with my own sign-in for office tasks?"*,
+  which hybrid search had answered with the intake procedure. No leak in any mode.
+- **It cannot find what search did not return.** Three keyword questions return no passage at
+  all, so there is nothing to grade; only hybrid search reaches them. Reranking is a layer on top
+  of hybrid search, not a replacement for it.
+- **The motivating question still misses.** *"Which committee signs off on AI projects that
+  affect people?"* stays out of the top 3, as does the supplier-paperwork question. Thirteen
+  questions is a small set: these are one model's grades on one run.
+- **The closed answer set did its job.** On 6 of the 14 hybrid searches Qwen graded 1 passage
+  of 20; each such reply counted as no decision and the search kept its own order, so the gain
+  above comes from the other 8. A simpler answer format (one list of 20 grades) may cut that
+  failure rate; measure before changing it.
+- **Too slow on a CPU for interactive use.** The two reranked rows took 25 minutes for 25
+  grading calls (three keyword searches returned nothing to grade), about a minute per search. On a laptop that suits batch evaluation, not a person waiting for an answer; a
+  GPU server or a hosted model behind the gateway is the deployment option, measured the same
+  way. Set `EVIDENCE_MCP_RERANK_TIMEOUT` to what the hardware needs (the first attempt, at a
+  fixed 60 seconds, timed out on every question).
 
 ## Limitations and roadmap
 
 - [x] **Hybrid retrieval**: embeddings alongside BM25 with rank fusion, compared on the same
       evaluation (0.2)
 - [x] **Reranking**: a model-based reranker over the fused top 20, graded from a closed set,
-      off by default (0.4). Next: record live runs and decide on the evidence.
+      off by default (0.4). First live run (0.4.1): hit@3 0.77 to 0.85 on hybrid search, about a
+      minute per search on a laptop CPU. Next: a list-of-grades answer format for small models,
+      and a GPU or hosted run for latency.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.

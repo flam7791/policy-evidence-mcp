@@ -2,6 +2,14 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- First live reranking run, Qwen 2.5 7B on a laptop CPU, recorded in
+  `evals/rerank-qwen2.5-7b-ctx8k.json` and replayed in CI: on the paraphrase set, hybrid search
+  goes from hit@3 0.77 to 0.85 and MRR 0.77 to 0.87 with reranking, no leaks; 6 of 14 hybrid
+  searches got a partial answer and kept their order; about a minute per search. Results and
+  limits in the README.
+
 ## 0.4.1
 
 - `EVIDENCE_MCP_RERANK_TIMEOUT` (default 60 seconds) sets how long a grading call may take. The
