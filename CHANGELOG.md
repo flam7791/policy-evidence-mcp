@@ -2,6 +2,14 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- Live run of the `list` answer format, Qwen 2.5 7B on a laptop CPU, recorded in
+  `evals/rerank-qwen2.5-7b-ctx8k-list.json` and replayed in CI: hybrid + rerank hit@1 0.77 and
+  MRR 0.83 against 0.85 and 0.87 for `objects`, 7 searches with no decision against 6, 54
+  minutes against 25. In 8 of 10 failed replies the model returned three grades, the length of
+  the prompt's example. `objects` stays the default; results in the README.
+
 ## 0.5.0
 
 - `EVIDENCE_MCP_RERANK_FORMAT=list`: the reranking model answers with one grade per passage, in

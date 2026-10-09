@@ -1,0 +1,258 @@
+{
+ "model": "qwen2.5:7b-ctx8k",
+ "format": "list",
+ "entries": {
+  "36842410418e629be33e5492101eef6b": {
+   "error": "graded 3 of 13 passages"
+  },
+  "8621c2b2b5cc0df19f9f12e3b0e818ff": {
+   "grades": [
+    0,
+    0
+   ]
+  },
+  "225fcc45689e45fb77982a2ae8717da8": {
+   "grades": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "c3a78dc697c6b7ff99b2cc63566ad68d": {
+   "grades": [
+    0,
+    2,
+    0
+   ]
+  },
+  "e3ab0f26555c04a6333db23300295885": {
+   "error": "graded 3 of 10 passages"
+  },
+  "1637b27b734927fa40c823ca693a1b9d": {
+   "grades": [
+    0,
+    0,
+    0
+   ]
+  },
+  "039059f399fb1ac07d4def932cf58603": {
+   "error": "graded 3 of 15 passages"
+  },
+  "39d864cc12ab7480aa83f188c960b9e0": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "2d18faa6d860e2c2fe6fdb55a76a7fe2": {
+   "grades": [
+    0,
+    2,
+    0,
+    0
+   ]
+  },
+  "e2b99b380e84ed8b86f13c29863ded53": {
+   "grades": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "24b774feddaf9eb1f18c2eea26b52ad2": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "56583a0ff9cfb231f602dab6c2d8531d": {
+   "error": "graded 3 of 20 passages"
+  },
+  "6d65d27d80453a4c91647b9ad5939663": {
+   "grades": [
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "0470659a4831fe496657d9b0daf4c043": {
+   "error": "graded 3 of 20 passages"
+  },
+  "b92169417aa852995b8d4e93811c14cb": {
+   "error": "grade outside 0-3: 5"
+  },
+  "c9fd06572baee07b8223be68f6fb5c72": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "eb2cdef9f5765cfa0842b82834ecb198": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "3e9babda39a532a29e1a45ef7465d859": {
+   "error": "graded 3 of 20 passages"
+  },
+  "d8f46efa2b1d562fc7f8b23e11eefe90": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "2642e9ceba12ad7cfbb95cc2438f582c": {
+   "error": "graded 3 of 20 passages"
+  },
+  "dacd157cef199d270c97a85ce692b23f": {
+   "error": "graded 19 of 20 passages"
+  },
+  "53164160ab6fe7482feb3537e81ccef6": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "72feb9dfe2701d52175805ff24fa25fa": {
+   "error": "graded 3 of 20 passages"
+  },
+  "1c6d94f4235849988988974c290f37d0": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  }
+ }
+}

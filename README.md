@@ -389,14 +389,33 @@ one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI repla
   questions is a small set: these are one model's grades on one run.
 - **The closed answer set did its job.** On 6 of the 14 hybrid searches Qwen graded 1 passage
   of 20; each such reply counted as no decision and the search kept its own order, so the gain
-  above comes from the other 8. `EVIDENCE_MCP_RERANK_FORMAT=list` (0.5) asks for one list of
-  20 grades instead; it is recorded in its own file, so the two formats can be compared on the
-  same questions before either becomes the default.
+  above comes from the other 8. The shorter `list` format (0.5) did not fix that; see below.
 - **Too slow on a CPU for interactive use.** The two reranked rows took 25 minutes for 25
   grading calls (three keyword searches returned nothing to grade), about a minute per search. On a laptop that suits batch evaluation, not a person waiting for an answer; a
   GPU server or a hosted model behind the gateway is the deployment option, measured the same
   way. Set `EVIDENCE_MCP_RERANK_TIMEOUT` to what the hardware needs (the first attempt, at a
   fixed 60 seconds, timed out on every question).
+
+### The `list` answer format did worse (live run, October 2026)
+
+Same model, hardware and questions, with `EVIDENCE_MCP_RERANK_FORMAT=list` (one number per
+passage, in order). `evals/rerank-qwen2.5-7b-ctx8k-list.json` holds the grades; CI replays both.
+
+| Mode | Format | hit@1 | hit@3 | MRR | Searches with no decision | Run time |
+|---|---|---|---|---|---|---|
+| keywords + rerank | objects | 0.62 | 0.69 | 0.65 | 0 | 25 min (both rows) |
+| keywords + rerank | list | 0.54 | 0.54 | 0.56 | 3 | 54 min (both rows) |
+| hybrid + rerank | objects | **0.85** | **0.85** | **0.87** | 6 of 14 | |
+| hybrid + rerank | list | 0.77 | 0.85 | 0.83 | 7 of 14 | |
+
+- **Worse on every measure but one,** and twice as slow. The `objects` format stays the default.
+- **The failures changed shape, and the prompt explains it.** In 8 of the 10 failed replies Qwen
+  returned exactly three grades, whatever the number of passages. The prompt's example was a
+  list for three passages; a small model copied its length. One reply graded 19 of 20, one used
+  a grade of 5. Each was no decision, as designed: the closed set held on both formats.
+- **What this teaches beyond the reranker:** for a small model, an example in the prompt is
+  part of the specification, length included. A next attempt would show no list at all, or one
+  as long as the real one, and be measured the same way.
 
 ## Limitations and roadmap
 
@@ -404,8 +423,9 @@ one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI repla
       evaluation (0.2)
 - [x] **Reranking**: a model-based reranker over the fused top 20, graded from a closed set,
       off by default (0.4). First live run (0.4.1): hit@3 0.77 to 0.85 on hybrid search, about a
-      minute per search on a laptop CPU. A list-of-grades answer format for small models (0.5),
-      to be measured against it. Next: a GPU or hosted run for latency.
+      minute per search on a laptop CPU. A list-of-grades answer format (0.5) measured worse
+      (hit@1 0.77 against 0.85, twice as slow); `objects` stays the default. Next: a GPU or
+      hosted run for latency.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.
