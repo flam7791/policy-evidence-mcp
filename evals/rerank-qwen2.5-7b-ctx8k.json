@@ -1,5 +1,6 @@
 {
  "model": "qwen2.5:7b-ctx8k",
+ "format": "objects",
  "entries": {
   "dda4e66d11b60949da54e717e0f93019": {
    "grades": [
@@ -292,6 +293,459 @@
    "error": "graded 1 of 20 passages"
   },
   "54302b6b4ba6f004a901d3c7d4afe035": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "2a80ac21cdefd7864967b0c64096f1c7": {
+   "grades": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "106134443b2068cb60badb664c111dce": {
+   "grades": [
+    0,
+    2
+   ]
+  },
+  "79163d5b8ca7e0c099037f38d0dd3440": {
+   "grades": [
+    0,
+    0
+   ]
+  },
+  "7a1ccb0de837d5ff8cbff77245c919d2": {
+   "grades": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "a185594da43ec9b3b4bb3effe882df75": {
+   "grades": [
+    0,
+    2
+   ]
+  },
+  "baaaee027a94c2aaf6f5eea7bb5d458c": {
+   "grades": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "456103da4f43adc31f7fec1bfa057e12": {
+   "grades": [
+    0,
+    0
+   ]
+  },
+  "351c93de1ac38184b7ed09e6e43b8c37": {
+   "error": "graded 1 of 12 passages"
+  },
+  "dbf13b4e4ca9cad0577c3f6c63f09f9d": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    3
+   ]
+  },
+  "31dd997d318a01bd55f6cc3291b8060e": {
+   "grades": [
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "d8291f867a4c4cae83c1eff7d737373b": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "a61dd80a1e9809d34c0d3fb2cdbf64e2": {
+   "grades": [
+    0,
+    0,
+    0,
+    3,
+    3,
+    0,
+    3
+   ]
+  },
+  "b664b9db036c985ac23ec3c20e8bc1ca": {
+   "grades": [
+    0,
+    0,
+    0,
+    3,
+    0,
+    0
+   ]
+  },
+  "63ef0454e1ccb832a6b1e0bdd999c3f8": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "922f3ac0189d03ada0168888ef8c5961": {
+   "error": "graded 11 of 12 passages"
+  },
+  "46082c91f2155cc1db5ae67ff89660db": {
+   "grades": [
+    3,
+    0,
+    0
+   ]
+  },
+  "456d411402dfafe791e25417c52d0ce4": {
+   "grades": [
+    3,
+    1
+   ]
+  },
+  "1f86cb6e9506092d5a93e8ca47bd3d17": {
+   "grades": [
+    3,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "57438da1423193766e52c12a9d2f3696": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0
+   ]
+  },
+  "5071f4ebe2ab604bddda95836723aa7b": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "d73b776cbda97eac1384a324d15b8ecf": {
+   "error": "graded 1 of 14 passages"
+  },
+  "fcb529a1ad943444b2c7ceace87e3d0c": {
+   "error": "graded 2 of 14 passages"
+  },
+  "93c42caad3ec6a299294519dadc73f8d": {
+   "grades": [
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0
+   ]
+  },
+  "24351d2e3330d5450a88af528d4b680d": {
+   "error": "graded 1 of 16 passages"
+  },
+  "19b32f260e995851521279d58964d2f6": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "6b028f119872a01392eabc375b738635": {
+   "grades": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "a248e0b999cc96d866135bb10e8fba9b": {
+   "error": "graded 1 of 20 passages"
+  },
+  "90014ef835662c8161479ff96a5c3bfa": {
+   "error": "graded 1 of 20 passages"
+  },
+  "48d1bfcd76bd8cb3d6e777f3d87cb290": {
+   "error": "graded 1 of 20 passages"
+  },
+  "9acb25115aa3b1652463bfbf4efad901": {
+   "error": "graded 1 of 20 passages"
+  },
+  "e2778b0a5b7aea0c1b6716feff2c604c": {
+   "error": "grade outside 0-3: 5"
+  },
+  "12214b28824cfbc44a2a5b51c21baebf": {
+   "error": "graded 1 of 20 passages"
+  },
+  "a5d520f095a85f2e5708f778a2829f0c": {
+   "error": "graded 1 of 20 passages"
+  },
+  "5c34fa665a743af9585253fbf73479ce": {
+   "error": "graded 1 of 20 passages"
+  },
+  "16ff3ad8d0a4119e6661e7ad5088b1be": {
+   "error": "graded 1 of 20 passages"
+  },
+  "c52feefa77b8b2d135a078e7ac8c243d": {
+   "error": "graded 1 of 20 passages"
+  },
+  "fdcb66413ad25dd5f9d9cf58c90f7bea": {
+   "error": "graded 1 of 20 passages"
+  },
+  "974329a65b6a228b5e63115750a36d1b": {
+   "error": "graded 1 of 20 passages"
+  },
+  "73f56cfc88cb4b149057cb2b4e530ca2": {
+   "grades": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "baecdbf7fe662dd02b078368617a7669": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "693b0ee481f79edf96ad87ab6b348861": {
+   "error": "graded 1 of 20 passages"
+  },
+  "47c0a38fa9fe073829c3ef0a412e7d65": {
+   "error": "graded 1 of 20 passages"
+  },
+  "dc5c33c649ad6e907f8fb2e149f9768f": {
+   "error": "graded 1 of 20 passages"
+  },
+  "0877ea55dc0b4c790f4be4033cb2aab0": {
+   "grades": [
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "1bfaebc8c23a41849dcc2f7b2f5089d8": {
+   "error": "graded 1 of 20 passages"
+  },
+  "9c2d28c65f5b50f81ef62841478d8953": {
+   "error": "graded 1 of 20 passages"
+  },
+  "8829d5e1c77be20f7e3908d0f7953a37": {
+   "error": "graded 1 of 20 passages"
+  },
+  "505990f31f9ad05bdf23f72df8fa2d0f": {
+   "error": "graded 1 of 20 passages"
+  },
+  "855b677167215a650540072c3634da2a": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "f08064ee358c46e01ad850f73fd4dd96": {
+   "error": "graded 1 of 20 passages"
+  },
+  "239d0baec66208d7fcb66aab1239f2f5": {
+   "error": "graded 1 of 20 passages"
+  },
+  "71fea6e4f8b7d97c789ce336f8e57a62": {
+   "grades": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "2ef40ed58840758f3259a6b053005dd5": {
+   "error": "graded 2 of 20 passages"
+  },
+  "887a7d957d68a7080f3e4bd45766a153": {
+   "error": "graded 1 of 20 passages"
+  },
+  "44107a2413cf75d056a4e2952b1b8a75": {
    "grades": [
     0,
     0,

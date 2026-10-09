@@ -267,9 +267,12 @@ hire?"* shares no words with the policy, which says *"Staff must not use AI tool
 decisions about individuals, such as recruitment"*. Keyword retrieval cannot bridge that
 vocabulary gap.
 
-`evals/paraphrase_questions.jsonl` makes the gap measurable: 13 questions worded the way people
-ask rather than the way policies are written, plus a security question. Keyword search finds the
-right document in the top 3 for **0.54** of them (hit@1 0.46, MRR 0.52, no leaks).
+`evals/paraphrase_questions.jsonl` makes the gap measurable: 40 questions worded the way people
+ask rather than the way policies are written, about ten per document, plus three security
+questions. Keyword search finds the right document in the top 3 for **0.68** of them (hit@1
+0.53, MRR 0.62, no leaks). The first 14 (13 scored, one leak check) are frozen in
+`evals/paraphrase_questions_v1.jsonl`; the other 29 were added in October 2026 and turned out
+easier for keywords (hit@3 0.74 against 0.54).
 
 ## Hybrid search (0.2)
 
@@ -301,14 +304,16 @@ vectors on every push.
 |---|---|---|---|---|---|
 | Direct questions (16) | keywords | 0.93 | 0.93 | 0.93 | 0 |
 | | **hybrid** | **1.00** | **1.00** | **1.00** | 0 |
-| Paraphrases (14) | keywords | 0.46 | 0.54 | 0.52 | 0 |
+| Paraphrases, first 14 | keywords | 0.46 | 0.54 | 0.52 | 0 |
 | | **hybrid** | **0.69** | **0.77** | **0.77** | 0 |
+| Paraphrases, all 43 | keywords | 0.53 | 0.68 | 0.62 | 0 |
+| | **hybrid** | **0.70** | **0.90** | **0.80** | 0 |
 
 Hybrid search closes the gap on the direct questions (it now finds *"Can employees rely on a
 chatbot to pick which job applicants to hire?"*) and lifts the paraphrases from about half to
-three quarters, with no leak in either mode. Three paraphrases still miss, for example *"Which
-committee signs off on AI projects that affect people?"*, where the answer says "Digital
-Governance Board". That is the case for a reranker, next on the roadmap.
+three quarters, with no leak in either mode. On all 40 paraphrases, four still miss the top 3,
+for example *"Which committee signs off on AI projects that affect people?"*, where the answer
+says "Digital Governance Board". That is the case for a reranker (0.4, below).
 
 Rules that keep it safe:
 
@@ -364,42 +369,60 @@ error: nothing is recorded for that question, so running the command again asks 
 invalid answer from the model, by contrast, is recorded and counted: it is part of what is
 measured.
 
-### Results (live run, October 2026)
+### Results (live runs, October 2026)
 
 Qwen 2.5 7B (8k context) through Ollama on a laptop CPU (Intel Core i7-13620H, 16 GB, integrated
-graphics), grading the top 20 passages of each search, on the 14 paraphrase questions (13 scored,
-one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI replays them.
+graphics), grading the top 20 passages of each search, on the 43 paraphrase questions (40 scored,
+three leak checks). The first 14 were graded in one run and the other 29 in a second; both are in
+`evals/rerank-qwen2.5-7b-ctx8k.json`, which CI replays.
 
-| Mode | hit@1 | hit@3 | MRR | Leaks |
-|---|---|---|---|---|
-| keywords | 0.46 | 0.54 | 0.52 | 0 |
-| keywords + rerank | 0.62 | 0.69 | 0.65 | 0 |
-| hybrid | 0.69 | 0.77 | 0.77 | 0 |
-| **hybrid + rerank** | **0.85** | **0.85** | **0.87** | 0 |
+| Mode | hit@1 | hit@3 | MRR | Leaks | Searches with no decision |
+|---|---|---|---|---|---|
+| keywords | 0.53 | 0.68 | 0.62 | 0 | |
+| keywords + rerank | 0.70 | 0.80 | 0.75 | 0 | 5 of 36 |
+| hybrid | 0.70 | 0.90 | 0.80 | 0 | |
+| **hybrid + rerank** | **0.78** | **0.95** | **0.86** | 0 | **29 of 43** |
 
-- **Reranking helped in both modes, most at rank 1.** On hybrid search it put the right document
-  first for two more questions (9 to 11 of 13) and into the top 3 for one more (10 to 11),
-  including *"Can I use a free chatbot from the web with my own sign-in for office tasks?"*,
-  which hybrid search had answered with the intake procedure. No leak in any mode.
-- **It cannot find what search did not return.** Three keyword questions return no passage at
+The same runs on the first 13 scored questions and on the 27 added later (hit@1 / hit@3):
+
+| Mode | First 13 | Added 27 |
+|---|---|---|
+| keywords | 0.46 / 0.54 | 0.56 / 0.74 |
+| keywords + rerank | 0.62 / 0.69 | 0.74 / 0.85 |
+| hybrid | 0.69 / 0.77 | 0.70 / 0.96 |
+| hybrid + rerank | 0.85 / 0.85 | 0.74 / 1.00 |
+
+- **Reranking still helps, on three times the questions.** Hybrid search goes from 28 to 31 of
+  40 right at rank 1 and from 36 to 38 in the top 3; keyword search from 21 to 28 at rank 1. No
+  leak in any mode. The gain is smaller than the first run suggested (hit@1 +0.08, not +0.16),
+  which is what a set of 13 could not tell.
+- **Most hybrid searches got no decision, and list length is why.** Qwen graded 1 passage of
+  20 on most hybrid searches: across both runs, 15 of 44 replies for 20 passages were complete,
+  against 30 of 35 for shorter lists (most keyword searches return fewer than 20). Each incomplete
+  reply was no decision, as designed, so search kept its own order: the gains above come from
+  the 14 hybrid searches that were graded, and the closed set kept the other 29 from doing harm.
+  A next run grades the top 10 (`EVIDENCE_MCP_RERANK_DEPTH=10`), measured the same way.
+- **It cannot find what search did not return.** Four keyword questions return no passage at
   all, so there is nothing to grade; only hybrid search reaches them. Reranking is a layer on top
   of hybrid search, not a replacement for it.
-- **The motivating question still misses.** *"Which committee signs off on AI projects that
-  affect people?"* stays out of the top 3, as does the supplier-paperwork question. Thirteen
-  questions is a small set: these are one model's grades on one run.
-- **The closed answer set did its job.** On 6 of the 14 hybrid searches Qwen graded 1 passage
-  of 20; each such reply counted as no decision and the search kept its own order, so the gain
-  above comes from the other 8. The shorter `list` format (0.5) did not fix that; see below.
-- **Too slow on a CPU for interactive use.** The two reranked rows took 25 minutes for 25
-  grading calls (three keyword searches returned nothing to grade), about a minute per search. On a laptop that suits batch evaluation, not a person waiting for an answer; a
-  GPU server or a hosted model behind the gateway is the deployment option, measured the same
-  way. Set `EVIDENCE_MCP_RERANK_TIMEOUT` to what the hardware needs (the first attempt, at a
-  fixed 60 seconds, timed out on every question).
+- **Two questions miss with hybrid search, reranked or not:** *"Which committee signs off on AI
+  projects that affect people?"* and *"How long do we keep the paperwork for suppliers once a
+  deal is over?"*. Reranked keyword search does find the first.
+- **The added questions are easier,** for keywords and for hybrid search alike (hybrid hit@3
+  0.96 against 0.77). They were written before any search ran on them, not chosen to be hard,
+  so the larger set leaves less room for a reranker to show a gain at rank 3.
+- **Too slow on a CPU for interactive use.** About a minute per graded search (the second run
+  took about 65 minutes for 55 calls). On a laptop that suits batch evaluation, not a person waiting
+  for an answer; a GPU server or a hosted model behind the gateway is the deployment option,
+  measured the same way. Set `EVIDENCE_MCP_RERANK_TIMEOUT` to what the hardware needs (the first
+  attempt, at a fixed 60 seconds, timed out on every question).
 
 ### The `list` answer format did worse (live run, October 2026)
 
-Same model, hardware and questions, with `EVIDENCE_MCP_RERANK_FORMAT=list` (one number per
-passage, in order). `evals/rerank-qwen2.5-7b-ctx8k-list.json` holds the grades; CI replays both.
+Same model and hardware, on the first 14 questions only, with `EVIDENCE_MCP_RERANK_FORMAT=list`
+(one number per passage, in order), compared with the `objects` format on the same 14.
+`evals/rerank-qwen2.5-7b-ctx8k-list.json` holds the grades; CI replays them on
+`evals/paraphrase_questions_v1.jsonl`. The list format was not run on the larger set.
 
 | Mode | Format | hit@1 | hit@3 | MRR | Searches with no decision | Run time |
 |---|---|---|---|---|---|---|
@@ -422,10 +445,11 @@ passage, in order). `evals/rerank-qwen2.5-7b-ctx8k-list.json` holds the grades; 
 - [x] **Hybrid retrieval**: embeddings alongside BM25 with rank fusion, compared on the same
       evaluation (0.2)
 - [x] **Reranking**: a model-based reranker over the fused top 20, graded from a closed set,
-      off by default (0.4). First live run (0.4.1): hit@3 0.77 to 0.85 on hybrid search, about a
-      minute per search on a laptop CPU. A list-of-grades answer format (0.5) measured worse
-      (hit@1 0.77 against 0.85, twice as slow); `objects` stays the default. Next: a GPU or
-      hosted run for latency.
+      off by default (0.4). On 40 paraphrases: hit@1 0.70 to 0.78 and hit@3 0.90 to 0.95 on
+      hybrid search, about a minute per search on a laptop CPU, with most 20-passage searches
+      getting no decision. A list-of-grades answer format (0.5) measured worse on the first 14;
+      `objects` stays the default. Next: grading the top 10, then a GPU or hosted run for
+      latency.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.

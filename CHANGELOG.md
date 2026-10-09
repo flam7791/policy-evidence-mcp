@@ -8,6 +8,11 @@ Versions follow [semantic versioning](https://semver.org).
   (`x14`-`x40`, `s04`-`s05`), about ten per document, written before any search was run on
   them. The first 14 stay frozen in `evals/paraphrase_questions_v1.jsonl`, where CI replays the
   `list` format recording; the `objects` recording is replayed on the full set.
+- Live run of the 29 added questions, Qwen 2.5 7B on a laptop CPU, added to
+  `evals/rerank-qwen2.5-7b-ctx8k.json`: on all 40, hybrid search goes from hit@1 0.70 to 0.78,
+  hit@3 0.90 to 0.95 and MRR 0.80 to 0.86 with reranking, no leaks. 29 of 43 hybrid searches got
+  no decision: 15 of 44 replies for 20 passages were complete, against 30 of 35 for shorter
+  lists. The added questions are easier (hybrid hit@3 0.96 against 0.77). Results in the README.
 - Live run of the `list` answer format, Qwen 2.5 7B on a laptop CPU, recorded in
   `evals/rerank-qwen2.5-7b-ctx8k-list.json` and replayed in CI: hybrid + rerank hit@1 0.77 and
   MRR 0.83 against 0.85 and 0.87 for `objects`, 7 searches with no decision against 6, 54
