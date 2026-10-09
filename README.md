@@ -129,6 +129,7 @@ All settings are environment variables with safe defaults.
 | `EVIDENCE_MCP_RERANK_MODEL` | `qwen2.5:7b` | Reranking model (`auto` through a gateway) |
 | `EVIDENCE_MCP_RERANK_API_KEY` | none | Key for that endpoint, if it needs one |
 | `EVIDENCE_MCP_RERANK_DEPTH` | `20` | Passages graded per search (2 to 50) |
+| `EVIDENCE_MCP_RERANK_FORMAT` | `objects` | How the model answers: `objects` (passage number and grade for each) or `list` (one grade per passage, in order, shorter for small models) |
 | `EVIDENCE_MCP_RERANK_TIMEOUT` | `60` | Seconds per grading call; after that, search keeps its own order. A 7B model on a laptop CPU needs several minutes for 20 passages |
 | `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION` | the caller's ceiling | Highest level whose passages the reranking model may see |
 | `EVIDENCE_MCP_TOKENS_FILE` | `tokens.json` | Hashed tokens for `--auth tokens` |
@@ -388,8 +389,9 @@ one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI repla
   questions is a small set: these are one model's grades on one run.
 - **The closed answer set did its job.** On 6 of the 14 hybrid searches Qwen graded 1 passage
   of 20; each such reply counted as no decision and the search kept its own order, so the gain
-  above comes from the other 8. A simpler answer format (one list of 20 grades) may cut that
-  failure rate; measure before changing it.
+  above comes from the other 8. `EVIDENCE_MCP_RERANK_FORMAT=list` (0.5) asks for one list of
+  20 grades instead; it is recorded in its own file, so the two formats can be compared on the
+  same questions before either becomes the default.
 - **Too slow on a CPU for interactive use.** The two reranked rows took 25 minutes for 25
   grading calls (three keyword searches returned nothing to grade), about a minute per search. On a laptop that suits batch evaluation, not a person waiting for an answer; a
   GPU server or a hosted model behind the gateway is the deployment option, measured the same
@@ -402,8 +404,8 @@ one leak check). `evals/rerank-qwen2.5-7b-ctx8k.json` holds the grades; CI repla
       evaluation (0.2)
 - [x] **Reranking**: a model-based reranker over the fused top 20, graded from a closed set,
       off by default (0.4). First live run (0.4.1): hit@3 0.77 to 0.85 on hybrid search, about a
-      minute per search on a laptop CPU. Next: a list-of-grades answer format for small models,
-      and a GPU or hosted run for latency.
+      minute per search on a laptop CPU. A list-of-grades answer format for small models (0.5),
+      to be measured against it. Next: a GPU or hosted run for latency.
 - [ ] **Codes with data only**: use SDMX `availableconstraint` so `describe_dataset` lists only
       codes that actually have observations.
 - [ ] **Structured tool output**: typed results with output schemas.

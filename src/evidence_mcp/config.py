@@ -41,6 +41,9 @@ class Settings:
     # Seconds per grading call. A search waits this long at most, then keeps its own order;
     # a 7B model on a laptop CPU needs several minutes for 20 passages.
     rerank_timeout_seconds: float = 60.0
+    # How the reranking model answers: "objects" ({"passage": n, "grade": g} per passage) or
+    # "list" (one grade per passage, in order: shorter, for small models). Measure both.
+    rerank_format: str = "objects"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -69,6 +72,7 @@ class Settings:
             rerank_timeout_seconds=float(
                 env.get("EVIDENCE_MCP_RERANK_TIMEOUT", defaults.rerank_timeout_seconds)
             ),
+            rerank_format=env.get("EVIDENCE_MCP_RERANK_FORMAT", defaults.rerank_format).lower(),
             rerank_max_classification=(
                 env.get("EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION") or ""
             ).lower()
@@ -98,6 +102,7 @@ class Settings:
             self.rerank_model,
             api_key=self.rerank_api_key,
             timeout=self.rerank_timeout_seconds,
+            answer_format=self.rerank_format,
         )
 
     def validate(self) -> None:
@@ -110,6 +115,8 @@ class Settings:
             raise ValueError("EVIDENCE_MCP_SDMX_BASE_URL must use https://")
         if self.rate_limit_per_hour < 1:
             raise ValueError("EVIDENCE_MCP_RATE_LIMIT_PER_HOUR must be at least 1")
+        if self.rerank_format not in ("objects", "list"):
+            raise ValueError("EVIDENCE_MCP_RERANK_FORMAT must be objects or list")
         if not 1 <= self.rerank_timeout_seconds <= 3600:
             raise ValueError("EVIDENCE_MCP_RERANK_TIMEOUT must be between 1 and 3600 seconds")
         if not 2 <= self.rerank_depth <= 50:

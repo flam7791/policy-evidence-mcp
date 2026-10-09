@@ -2,8 +2,15 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 0.5.0
 
+- `EVIDENCE_MCP_RERANK_FORMAT=list`: the reranking model answers with one grade per passage, in
+  order (`{"grades": [3, 0, 1]}`), instead of a passage number and grade for each. In the first
+  live run, Qwen 2.5 7B graded only 1 of 20 passages on 6 of 14 searches in the `objects`
+  format; the list is shorter to produce in full. The same closed-set rules apply. The default
+  stays `objects` until the list format is measured.
+- The answer format is part of the grade cache: a file records its format, a replay uses it,
+  and one file cannot mix formats. Recordings made with 0.4 keep their keys and keep replaying.
 - First live reranking run, Qwen 2.5 7B on a laptop CPU, recorded in
   `evals/rerank-qwen2.5-7b-ctx8k.json` and replayed in CI: on the paraphrase set, hybrid search
   goes from hit@3 0.77 to 0.85 and MRR 0.77 to 0.87 with reranking, no leaks; 6 of 14 hybrid

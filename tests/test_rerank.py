@@ -311,3 +311,92 @@ def test_an_evaluation_with_an_unavailable_service_is_incomplete(tmp_path, capsy
     out = capsys.readouterr().out
     assert code == 1 and "INCOMPLETE" in out
     assert not (tmp_path / "grades.json").exists()
+
+
+@pytest.mark.parametrize(
+    "reply,grades",
+    [
+        ('{"grades": [3, 0]}', [3, 0]),
+        ('{"grades": ["2", 1.0]}', [2, 1]),
+    ],
+)
+def test_the_list_format_is_read_in_passage_order(reply, grades):
+    assert parse_grades(reply, 2) == grades
+
+
+@pytest.mark.parametrize(
+    "reply,problem",
+    [
+        ('{"grades": [3]}', "graded 1 of 2"),
+        ('{"grades": [3, 0, 1]}', "graded 3 of 2"),
+        ('{"grades": [3, 7]}', "outside 0-3"),
+        ('{"grades": [3, {"passage": 2, "grade": 0}]}', "not an object"),
+    ],
+)
+def test_the_list_format_follows_the_same_closed_set(reply, problem):
+    with pytest.raises(RerankError, match=problem):
+        parse_grades(reply, 2)
+
+
+def test_the_list_format_asks_for_one_number_per_passage():
+    seen = []
+
+    def api(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": '{"grades": [0, 3]}'}}]}
+        )
+
+    grader = ChatReranker(
+        "http://localhost:11434/v1",
+        "qwen2.5:7b",
+        client=httpx.Client(transport=httpx.MockTransport(api)),
+        answer_format="list",
+    )
+    assert grader.grade(QUESTION, keywords().chunks[:2]) == [0, 3]
+    system, user = seen[0]["messages"][0]["content"], seen[0]["messages"][1]["content"]
+    assert "as a list of numbers" in system and '"passage"' not in system
+    assert "2 passages:" in user
+    with pytest.raises(ValueError, match="answer_format"):
+        ChatReranker("http://localhost:11434/v1", "m", answer_format="prose")
+
+
+def test_each_format_has_its_own_recordings(tmp_path):
+    passages = [h.chunk for h in keywords().search(QUESTION, 5, "internal")]
+
+    class ListGrader(ScriptedGrader):
+        format = "list"
+
+    path = tmp_path / "grades-list.json"
+    RerankCache(path, ListGrader()).grade(QUESTION, passages)
+    replay = RerankCache(path, offline=True)
+    assert replay.format == "list"  # the file says how it was recorded
+    assert replay.grade(QUESTION, passages)[0] in (0, 3)
+    objects = RerankCache(tmp_path / "grades-objects.json", ScriptedGrader())
+    assert objects._key(QUESTION, passages) != replay._key(QUESTION, passages)
+
+    class ObjectsGrader(ScriptedGrader):
+        format = "objects"
+
+    with pytest.raises(ValueError, match="'list' format"):
+        RerankCache(path, ObjectsGrader())  # an objects grader cannot write into a list file
+
+
+def test_recordings_from_0_4_keep_replaying():
+    # The committed live run was recorded before formats existed; its keys must not move.
+    replay = RerankCache(ROOT / "evals" / "rerank-qwen2.5-7b-ctx8k.json", offline=True)
+    assert replay.format == "objects"
+    passages = [h.chunk for h in keywords().search(QUESTION, 20, "internal")]
+    assert replay._key(QUESTION, passages)  # same key scheme as 0.4, no format prefix
+    assert not replay._key(QUESTION, passages).startswith("format=")
+
+
+def test_the_format_comes_from_the_environment(monkeypatch):
+    from evidence_mcp.config import Settings
+
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_FORMAT", "list")
+    assert Settings.from_env().reranker().format == "list"
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_FORMAT", "prose")
+    with pytest.raises(ValueError, match="RERANK_FORMAT"):
+        Settings.from_env()

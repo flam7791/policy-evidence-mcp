@@ -102,3 +102,7 @@ host, and no local option as simple as the Ollama endpoint the platform already 
 egress: off unless `EVIDENCE_MCP_RERANK_URL` is set, and in the platform it goes through the
 gateway with a `local_only` team. Whether it pays is measured on the paraphrase set with
 `--rerank`; until that run is recorded, the README reports no result for it.
+**Update (0.5).** The first live run showed the cost of the closed set on a small model: 6 of 14
+replies graded one passage of 20 and became no decision. Rather than loosen the rule (accept
+partial grades), 0.5 offers a shorter answer format, one number per passage, and keeps the rule.
+Each format is recorded in its own file, so the comparison is measured, not assumed.
