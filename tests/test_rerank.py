@@ -237,3 +237,77 @@ async def test_the_server_reranks_and_reports_it(settings, fetcher):
     assert found["search_mode"] == "keywords, reranked by scripted-v1"
     assert found["results"][0]["citation"].endswith(f"[{ANSWER_CHUNK}]")
     assert found["results"][0]["relevance"] == 3
+
+
+def test_a_service_that_does_not_answer_is_retried_not_recorded(tmp_path):
+    from evidence_mcp.rerank import RerankUnavailable
+
+    class Flaky(ScriptedGrader):
+        def __init__(self):
+            super().__init__()
+            self.down = True
+
+        def grade(self, question, passages):
+            if self.down:
+                self.calls.append((question, []))
+                raise RerankUnavailable("reranking service timed out after 60 s")
+            return super().grade(question, passages)
+
+    path = tmp_path / "grades.json"
+    passages = [h.chunk for h in keywords().search(QUESTION, 5, "internal")]
+    live = Flaky()
+    with pytest.raises(RerankUnavailable):
+        RerankCache(path, live).grade(QUESTION, passages)
+    assert not path.exists() or "timed out" not in path.read_text()  # nothing recorded
+    live.down = False
+    assert RerankCache(path, live).grade(QUESTION, passages)[0] in (0, 3)  # asked again
+    assert len(live.calls) == 2
+
+
+def test_a_timeout_is_reported_as_unavailable_with_the_setting_to_change():
+    from evidence_mcp.rerank import RerankUnavailable
+
+    def slow(request):
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    grader = ChatReranker(
+        "http://localhost:11434/v1",
+        "qwen2.5:7b",
+        client=httpx.Client(transport=httpx.MockTransport(slow)),
+        timeout=60,
+    )
+    with pytest.raises(RerankUnavailable, match="EVIDENCE_MCP_RERANK_TIMEOUT"):
+        grader.grade(QUESTION, keywords().chunks[:2])
+
+
+def test_the_timeout_comes_from_the_environment(monkeypatch):
+    from evidence_mcp.config import Settings
+
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_TIMEOUT", "600")
+    assert Settings.from_env().reranker().timeout == 600
+    monkeypatch.setenv("EVIDENCE_MCP_RERANK_TIMEOUT", "0")
+    with pytest.raises(ValueError, match="RERANK_TIMEOUT"):
+        Settings.from_env()
+
+
+def test_an_evaluation_with_an_unavailable_service_is_incomplete(tmp_path, capsys, monkeypatch):
+    from evidence_mcp.rerank import RerankUnavailable
+
+    class Down(ScriptedGrader):
+        def grade(self, question, passages):
+            raise RerankUnavailable("reranking service timed out after 60 s")
+
+    monkeypatch.setenv("EVIDENCE_MCP_MAX_CLASSIFICATION", "internal")
+    save_index(build_index(SAMPLE_CORPUS, "internal"), tmp_path / "index.json")
+    import evidence_mcp.config as config
+
+    monkeypatch.setattr(config.Settings, "reranker", lambda self: Down())
+    questions = ROOT / "evals" / "paraphrase_questions.jsonl"
+    code = main(
+        ["eval", "--questions", str(questions), "--index", str(tmp_path / "index.json"),
+         "--min-hit", "0", "--rerank", "--rerank-cache", str(tmp_path / "grades.json")]
+    )  # fmt: skip
+    out = capsys.readouterr().out
+    assert code == 1 and "INCOMPLETE" in out
+    assert not (tmp_path / "grades.json").exists()

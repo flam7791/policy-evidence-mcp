@@ -61,6 +61,14 @@ class RerankError(RuntimeError):
     """No usable grades: service down, invalid reply, or a replay without a recording."""
 
 
+class RerankUnavailable(RerankError):
+    """The reranking service did not answer (unreachable, timed out, HTTP error).
+
+    Unlike an invalid reply, this says nothing about the model, so it is never recorded: the
+    next run asks again. An evaluation in which grading was unavailable is incomplete.
+    """
+
+
 class RerankReplayMiss(RerankError):
     """Offline, and no recorded grades for this question and these passages."""
 
@@ -136,6 +144,7 @@ class ChatReranker:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.api_key = api_key
+        self.timeout = timeout
         self.client = client or httpx.Client(timeout=timeout)
 
     def grade(self, question: str, passages: list[Chunk]) -> list[int]:
@@ -156,22 +165,29 @@ class ChatReranker:
             response = self.client.post(
                 f"{self.base_url}/chat/completions", json=body, headers=headers
             )
+        except httpx.TimeoutException as exc:
+            raise RerankUnavailable(
+                f"reranking service timed out after {self.timeout:g} s "
+                "(raise EVIDENCE_MCP_RERANK_TIMEOUT for a slow local model)"
+            ) from exc
         except httpx.HTTPError as exc:
-            raise RerankError(f"reranking service unreachable: {exc}") from exc
+            raise RerankUnavailable(f"reranking service unreachable: {exc}") from exc
         if response.status_code >= 400:
-            raise RerankError(f"reranking service answered HTTP {response.status_code}")
+            raise RerankUnavailable(f"reranking service answered HTTP {response.status_code}")
         try:
             content = response.json()["choices"][0]["message"]["content"] or ""
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise RerankError("unexpected reply from the reranking service") from exc
+            raise RerankUnavailable("unexpected reply from the reranking service") from exc
         return parse_grades(content, len(passages))
 
 
 class RerankCache:
     """Grades by (model, question, passages) in one JSON file, around a live reranker or alone.
 
-    A failure is recorded too (as an error), so a run where the model answered badly replays
-    exactly. With offline=True (or no live reranker) a missing entry raises RerankReplayMiss.
+    An invalid answer is recorded too (as an error), so a run where the model answered badly
+    replays exactly. A service that did not answer (RerankUnavailable) is not recorded: the next
+    run asks again. With offline=True (or no live reranker) a missing entry raises
+    RerankReplayMiss.
     """
 
     def __init__(self, path: Path, inner: ChatReranker | None = None, offline: bool = False):
@@ -201,6 +217,8 @@ class RerankCache:
                 )
             try:
                 self.entries[key] = {"grades": self.inner.grade(question, passages)}
+            except RerankUnavailable:
+                raise  # nothing learnt about the model: do not record, ask again next run
             except RerankError as exc:
                 self.entries[key] = {"error": str(exc)}
             self._save()
@@ -233,6 +251,7 @@ class RerankedIndex:
         self.chunks = inner.chunks
         self.last_mode = getattr(inner, "last_mode", "keywords")
         self.fallbacks = 0  # queries where grading failed and the search order was kept
+        self.unavailable = 0  # ...of which the service did not answer (an incomplete run)
 
     @property
     def model(self) -> str:
@@ -259,6 +278,7 @@ class RerankedIndex:
             log.warning("reranking unavailable, keeping the search order: %s", exc)
             self.last_mode = f"{base_mode} (reranking unavailable: {exc})"
             self.fallbacks += 1
+            self.unavailable += isinstance(exc, RerankUnavailable)
             return hits[:top_k]
         graded = [replace(hits[i], relevance=g) for i, g in zip(slots, grades, strict=True)]
         order = sorted(range(len(graded)), key=lambda j: (-graded[j].relevance, j))

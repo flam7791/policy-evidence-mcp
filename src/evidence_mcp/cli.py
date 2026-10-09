@@ -257,6 +257,14 @@ def _eval(args: argparse.Namespace, settings: Settings) -> int:
         if rerank and index.fallbacks:
             # Recorded, not hidden: a model that answers badly is part of what is measured.
             print(f"  {label}: grading failed on {index.fallbacks} question(s); order kept")
+        if rerank and index.unavailable:
+            # A service that did not answer measured nothing: the run is incomplete.
+            print(
+                f"  {label}: INCOMPLETE, the reranking service did not answer for "
+                f"{index.unavailable} question(s) (see the warnings). Nothing was recorded for "
+                "them; fix the cause (often EVIDENCE_MCP_RERANK_TIMEOUT) and run again."
+            )
+            ok = False
         reports[label] = report
         print(
             f"| {label} | {report.hit_at_1:.2f} | {report.hit_at_k:.2f} | {report.mrr:.2f} | "

@@ -129,6 +129,7 @@ All settings are environment variables with safe defaults.
 | `EVIDENCE_MCP_RERANK_MODEL` | `qwen2.5:7b` | Reranking model (`auto` through a gateway) |
 | `EVIDENCE_MCP_RERANK_API_KEY` | none | Key for that endpoint, if it needs one |
 | `EVIDENCE_MCP_RERANK_DEPTH` | `20` | Passages graded per search (2 to 50) |
+| `EVIDENCE_MCP_RERANK_TIMEOUT` | `60` | Seconds per grading call; after that, search keeps its own order. A 7B model on a laptop CPU needs several minutes for 20 passages |
 | `EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION` | the caller's ceiling | Highest level whose passages the reranking model may see |
 | `EVIDENCE_MCP_TOKENS_FILE` | `tokens.json` | Hashed tokens for `--auth tokens` |
 | `EVIDENCE_MCP_ENTRA_TENANT_ID` / `_AUDIENCE` | none | Entra ID tenant and the API's Application ID URI, for `--auth entra` |
@@ -344,6 +345,7 @@ It is a bounded judgment, not generation ([pattern P7](https://github.com/flam77
 ```bash
 ollama pull qwen2.5:7b
 export EVIDENCE_MCP_RERANK_URL=http://localhost:11434/v1
+export EVIDENCE_MCP_RERANK_TIMEOUT=900          # a laptop CPU; a GPU server needs far less
 export EVIDENCE_MCP_EMBEDDINGS_URL=http://localhost:11434/v1
 export EVIDENCE_MCP_MAX_CLASSIFICATION=internal
 CACHE="--embeddings-cache evals/embeddings.json"
@@ -355,7 +357,11 @@ evidence-mcp eval --questions evals/paraphrase_questions.jsonl --index build/hyb
   --mode compare --min-hit 0 $CACHE --rerank --rerank-cache evals/rerank-qwen2.5-7b.json --offline
 ```
 
-The table gains `keywords + rerank` and `hybrid + rerank` rows. **Not measured yet:** no live
+The table gains `keywords + rerank` and `hybrid + rerank` rows. If the reranking service does
+not answer for a question (a timeout, an outage), the run says INCOMPLETE and exits with an
+error: nothing is recorded for that question, so running the command again asks again. An
+invalid answer from the model, by contrast, is recorded and counted: it is part of what is
+measured. **Not measured yet:** no live
 reranking run has been recorded, so there is no result to report here. Record one per model you
 would deploy, commit the `evals/rerank-<model>.json` file, and compare hit@3, MRR and the time
 the run took against the hybrid row before turning it on.

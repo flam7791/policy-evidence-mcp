@@ -38,6 +38,9 @@ class Settings:
     rerank_api_key: str | None = None
     rerank_depth: int = 20
     rerank_max_classification: str | None = None
+    # Seconds per grading call. A search waits this long at most, then keeps its own order;
+    # a 7B model on a laptop CPU needs several minutes for 20 passages.
+    rerank_timeout_seconds: float = 60.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -63,6 +66,9 @@ class Settings:
             rerank_model=env.get("EVIDENCE_MCP_RERANK_MODEL", defaults.rerank_model),
             rerank_api_key=env.get("EVIDENCE_MCP_RERANK_API_KEY") or None,
             rerank_depth=int(env.get("EVIDENCE_MCP_RERANK_DEPTH", defaults.rerank_depth)),
+            rerank_timeout_seconds=float(
+                env.get("EVIDENCE_MCP_RERANK_TIMEOUT", defaults.rerank_timeout_seconds)
+            ),
             rerank_max_classification=(
                 env.get("EVIDENCE_MCP_RERANK_MAX_CLASSIFICATION") or ""
             ).lower()
@@ -87,7 +93,12 @@ class Settings:
             return None
         from .rerank import ChatReranker
 
-        return ChatReranker(self.rerank_url, self.rerank_model, api_key=self.rerank_api_key)
+        return ChatReranker(
+            self.rerank_url,
+            self.rerank_model,
+            api_key=self.rerank_api_key,
+            timeout=self.rerank_timeout_seconds,
+        )
 
     def validate(self) -> None:
         if self.max_classification not in CLASSIFICATION_LEVELS:
@@ -99,6 +110,8 @@ class Settings:
             raise ValueError("EVIDENCE_MCP_SDMX_BASE_URL must use https://")
         if self.rate_limit_per_hour < 1:
             raise ValueError("EVIDENCE_MCP_RATE_LIMIT_PER_HOUR must be at least 1")
+        if not 1 <= self.rerank_timeout_seconds <= 3600:
+            raise ValueError("EVIDENCE_MCP_RERANK_TIMEOUT must be between 1 and 3600 seconds")
         if not 2 <= self.rerank_depth <= 50:
             raise ValueError("EVIDENCE_MCP_RERANK_DEPTH must be between 2 and 50")
         if (

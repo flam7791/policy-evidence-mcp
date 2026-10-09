@@ -2,6 +2,16 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
+## 0.4.1
+
+- `EVIDENCE_MCP_RERANK_TIMEOUT` (default 60 seconds) sets how long a grading call may take. The
+  first live run, with Qwen 2.5 7B on a laptop CPU, timed out on every question at the fixed
+  60 seconds.
+- A reranking service that does not answer (timeout, connection error, HTTP error) is no longer
+  recorded in the grade cache, so a second run asks again instead of replaying the outage; an
+  evaluation in which that happened reports INCOMPLETE and fails. Invalid answers from the model
+  are still recorded and counted.
+
 ## 0.4.0
 
 - Optional reranking: one call to an OpenAI-compatible chat model per search grades the top 20
