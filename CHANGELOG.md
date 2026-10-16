@@ -2,7 +2,7 @@
 
 Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 0.5.1
 
 - The paraphrase set grows from 13 scored questions and one leak check to 40 and three
   (`x14`-`x40`, `s04`-`s05`), about ten per document, written before any search was run on
@@ -18,6 +18,9 @@ Versions follow [semantic versioning](https://semver.org).
   MRR 0.83 against 0.85 and 0.87 for `objects`, 7 searches with no decision against 6, 54
   minutes against 25. In 8 of 10 failed replies the model returned three grades, the length of
   the prompt's example. `objects` stays the default; results in the README.
+- The README opens with the framework pattern this repository implements and a link to the
+  other repositories.
+- `CITATION.cff`, so GitHub offers "Cite this repository".
 
 ## 0.5.0
 

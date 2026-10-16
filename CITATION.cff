@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use or refer to this software, please cite it as below."
+type: software
+title: policy-evidence-mcp
+abstract: "MCP server giving AI assistants governed, cited access to official statistics (SDMX) and policy documents (RAG)."
+authors:
+  - given-names: Flavio
+    family-names: Mericio
+version: 0.5.1
+date-released: "2026-10-16"
+license: MIT
+repository-code: "https://github.com/flam7791/policy-evidence-mcp"
+url: "https://github.com/flam7791/policy-evidence-mcp"
+keywords:
+  - mcp
+  - rag
+  - sdmx
+  - retrieval
+  - ai-governance

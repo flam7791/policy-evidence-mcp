@@ -19,6 +19,16 @@ hybrid search only calls an embedding model, which can be local.
 > Data retrieved through an API remains subject to that provider's terms of use. The sample
 > document corpus describes a fictional organisation.
 
+> **Part of a portfolio.** Implements patterns [P1][aief-p1] and [P2][aief-p2] (with [P7][aief-p7]
+> for reranking) of the [AI engineering framework][aief], at its *Build* stage. [All
+> repositories][aief-all].
+
+[aief]: https://github.com/flam7791/ai-engineering-framework
+[aief-all]: https://github.com/flam7791
+[aief-p1]: https://github.com/flam7791/ai-engineering-framework/blob/main/docs/patterns.md#p1-governed-retrieval-rag-with-a-sensitivity-ceiling
+[aief-p2]: https://github.com/flam7791/ai-engineering-framework/blob/main/docs/patterns.md#p2-read-only-mcp-tool-server
+[aief-p7]: https://github.com/flam7791/ai-engineering-framework/blob/main/docs/patterns.md#p7-bounded-judgment-a-typed-decision-from-a-closed-answer-set
+
 ## Architecture
 
 ```mermaid
